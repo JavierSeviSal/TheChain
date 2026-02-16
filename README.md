@@ -160,4 +160,4 @@ For the board mats, it detects the bounding box of all non-white content and cro
 
 ## License
 
-This is a fan-made companion tool. **Food Chain Magnate** is designed by Jeroen Doumen and Joris Wiersinga, published by Splotter Spellen. **The Chain** automa is designed by Raúl Arnaiz Bueno. All card artwork and game content belong to their respective owners.
+This is a fan-made companion tool. **Food Chain Magnate** is designed by Jeroen Doumen and Joris Wiersinga, published by Splotter Spellen. **The Chain** automa is designed by bgg user @runner199. All card artwork and game content belong to their respective owners.
