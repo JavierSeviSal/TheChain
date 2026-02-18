@@ -52,6 +52,7 @@ const I18N = {
         kimchi: "Kimchi",
         beer: "Beer",
         lemonade: "Lemonade",
+        softdrink: "Softdrink",
         // Competition levels
         cold: "Cold",
         cool: "Cool",
@@ -70,6 +71,23 @@ const I18N = {
         save_name: "Save name",
         full_mode: "Full",
         quick_mode: "Quick",
+        enable_all: "Enable All",
+        disable_all: "Disable All",
+        mod_coffee: "Coffee",
+        mod_kimchi: "Kimchi",
+        mod_noodle: "Noodle",
+        mod_sushi: "Sushi",
+        mod_gourmet: "Gourmet Food Critic",
+        mod_mass_marketeer: "Mass Marketeer",
+        mod_rural_marketeer: "Rural Marketeer",
+        mod_night_shift: "Night Shift Manager",
+        mod_ketchup: "Ketchup",
+        mod_fry_chefs: "Fry Chefs",
+        mod_movie_stars: "Movie Stars",
+        mod_reserve_prices: "Reserve Prices",
+        mod_lobbyists: "Lobbyists",
+        mod_new_districts: "New Districts",
+        mod_milestones: "Milestones",
     },
     es: {
         menu: "Menú",
@@ -112,6 +130,7 @@ const I18N = {
         kimchi: "Kimchi",
         beer: "Cerveza",
         lemonade: "Limonada",
+        softdrink: "Refresco",
         cold: "Frío",
         cool: "Fresco",
         neutral: "Neutro",
@@ -128,18 +147,36 @@ const I18N = {
         save_name: "Nombre del guardado",
         full_mode: "Completo",
         quick_mode: "Rápido",
+        enable_all: "Activar Todos",
+        disable_all: "Desactivar Todos",
+        mod_coffee: "Café",
+        mod_kimchi: "Kimchi",
+        mod_noodle: "Fideos",
+        mod_sushi: "Sushi",
+        mod_gourmet: "Crítico Gastronómico",
+        mod_mass_marketeer: "Promotor Masivo",
+        mod_rural_marketeer: "Promotor Rural",
+        mod_night_shift: "Gerente Nocturno",
+        mod_ketchup: "Ketchup",
+        mod_fry_chefs: "Cocineros de Frito",
+        mod_movie_stars: "Estrellas de Cine",
+        mod_reserve_prices: "Precios de Reserva",
+        mod_lobbyists: "Lobbistas",
+        mod_new_districts: "Nuevos Distritos",
+        mod_milestones: "Hitos",
     },
 };
 
 const FOOD_ICONS = {
     burger: "🍔",
     pizza: "🍕",
+    beer: "🍺",
+    lemonade: "🍋",
+    softdrink: "🥤",
     sushi: "🍣",
     noodle: "🍜",
     coffee: "☕",
     kimchi: "🥬",
-    beer: "🍺",
-    lemonade: "🍋",
 };
 
 let currentLang = localStorage.getItem("chain_lang") || "en";
@@ -151,7 +188,8 @@ function t(key) {
 function applyI18n() {
     document.querySelectorAll("[data-i18n]").forEach(el => {
         const key = el.getAttribute("data-i18n");
-        el.textContent = t(key);
+        const translated = (I18N[currentLang] && I18N[currentLang][key]) || I18N.en[key];
+        if (translated) el.textContent = translated;
     });
 }
 

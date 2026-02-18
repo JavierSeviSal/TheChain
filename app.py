@@ -148,4 +148,4 @@ def board_image(filename):
 # ─── Run ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(host="192.168.1.88", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

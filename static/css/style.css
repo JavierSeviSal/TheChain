@@ -167,6 +167,28 @@ body {
 
 /* ─── Setup Panel ───────────────────────────────────────────────── */
 
+.module-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.small-btn {
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    border: 1px solid var(--text-muted);
+    border-radius: 4px;
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.small-btn:hover {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+
 .toggle-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
