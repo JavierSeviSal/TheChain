@@ -278,18 +278,20 @@ class Deck:
 
 RECRUIT_TRAIN_TRACK = {
     # Position -> (open_slots, food_amount)
-    # food_amount = green number next to track for GET FOOD & DRINKS
+    # The physical board has 4 rows (bottom to top):
+    #   Pos 1 (start): 1 open slot,  green box = 2
+    #   Pos 2:         2 open slots, green box = 3
+    #   ── SHUFFLE boundary ──
+    #   Pos 3:         3 open slots, green box = 4
+    #   Pos 4 (top):   4 open slots, green box = 5
     1: {"open_slots": 1, "food_amount": 2},
-    2: {"open_slots": 2, "food_amount": 5},
-    3: {"open_slots": 2, "food_amount": 4},
-    4: {"open_slots": 3, "food_amount": 4},
-    5: {"open_slots": 3, "food_amount": 3},
-    6: {"open_slots": 4, "food_amount": 3},
-    7: {"open_slots": 4, "food_amount": 2},
-    # The SHUFFLE boundary is between positions 3 and 4 (or wherever indicated)
+    2: {"open_slots": 2, "food_amount": 3},
+    3: {"open_slots": 3, "food_amount": 4},
+    4: {"open_slots": 4, "food_amount": 5},
 }
 
-SHUFFLE_POSITIONS = {3, 4}  # Crossing between these triggers shuffle
+# Crossing between position 2 and 3 triggers an Action Deck shuffle
+SHUFFLE_BOUNDARY = (2, 3)
 
 
 @dataclass
@@ -306,14 +308,13 @@ class TrackMarker:
         """Move marker by delta. Returns (old_pos, new_pos, crossed_shuffle)."""
         old = self.position
         new = max(self.min_pos, min(self.max_pos, self.position + delta))
-        # Check if we crossed a shuffle boundary
+        # Check if we crossed the shuffle boundary
         crossed = False
-        if self.name == "recruit_train":
-            # Shuffle when crossing between certain positions
-            low, high = min(old, new), max(old, new)
-            for p in range(low, high):
-                if p in SHUFFLE_POSITIONS and p + 1 in SHUFFLE_POSITIONS:
-                    crossed = True
+        if self.name == "recruit_train" and old != new:
+            lo, hi = SHUFFLE_BOUNDARY
+            # Crossed if old and new are on different sides of the boundary
+            if (old <= lo and new >= hi) or (old >= hi and new <= lo):
+                crossed = True
         self.position = new
         return old, new, crossed
 
@@ -339,15 +340,12 @@ class Tracks:
             name="recruit_train",
             position=1,
             min_pos=1,
-            max_pos=7,
+            max_pos=4,
             labels={
-                1: "1 Open Slot",
-                2: "2 Open Slots",
-                3: "2 Open Slots",
-                4: "3 Open Slots",
-                5: "3 Open Slots",
-                6: "4 Open Slots",
-                7: "4 Open Slots",
+                1: "1 Open Slot (food ×2)",
+                2: "2 Open Slots (food ×3)",
+                3: "3 Open Slots (food ×4)",
+                4: "4 Open Slots (food ×5)",
             },
         )
     )

@@ -27,7 +27,9 @@
 #                 gourmet | mass_marketeer | rural_marketeer | night_shift
 #     - fallback: (optional) Food(s) gained when module inactive. String or list.
 #     - star:     (optional) Star icon on this slot: expand_chain | coffee_shop |
-#                 develop | lobby | garden. Stars fire only if their slot is active.
+#                 develop | lobby. Stars fire only if their slot is active.
+#                 NOTE: garden is NOT a star; it is intrinsic to Gourmet Food Critic
+#                 recruitment (the Chain places 1 garden whenever a GFC is recruited).
 #
 # Action card BACK (Get Food & Drinks / Cleanup side):
 #   demand:    most_demand | all_demand | specific
@@ -71,7 +73,7 @@ action_cards:
     market: beer
     actions:
     - { type: move_waitress, target: "+1" }
-    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade, star: garden }
+    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade }
     - { type: recruit_employee, target: Burger Chef, star: expand_chain }
     - { type: recruit_employee, target: Zeppelin Pilot, star: coffee_shop }
   back:
@@ -218,7 +220,7 @@ action_cards:
     market: pizza
     actions:
     - { type: claim_milestone, target: first_to_throw_away, star: expand_chain }
-    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade, star: garden }
+    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade }
     - { type: move_distance, target: "-3", star: coffee_shop }
     - { type: recruit_employee, target: Executive VP }
   back:

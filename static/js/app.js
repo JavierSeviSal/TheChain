@@ -380,10 +380,10 @@ function updateTracks() {
     // Recruit & Train
     const rtPos = tracks.recruit_train.position;
     $("#rt-value").textContent = rtPos;
-    $("#rt-info").textContent = `(${tracks.open_slots} ${t("open_slots")})`;
-    renderTrackBar("rt-markers", 1, 7, rtPos, [
-        "1", "2", "2", "3", "3", "4", "4"
-    ]);
+    $("#rt-info").textContent = `(${tracks.open_slots} ${t("open_slots")}, ${t("food")} ×${tracks.food_amount})`;
+    renderTrackBar("rt-markers", 1, 4, rtPos, [
+        "1", "2", "3", "4"
+    ], 2); // shuffleAfter=2 inserts a SHUFFLE divider after position 2
 
     // Price + Distance
     const pdPos = tracks.price_distance.position;
@@ -406,7 +406,7 @@ function updateTracks() {
     });
 }
 
-function renderTrackBar(containerId, min, max, current, labels) {
+function renderTrackBar(containerId, min, max, current, labels, shuffleAfter) {
     const container = document.getElementById(containerId);
     container.innerHTML = "";
     for (let i = min; i <= max; i++) {
@@ -414,6 +414,14 @@ function renderTrackBar(containerId, min, max, current, labels) {
         m.className = "marker" + (i === current ? " active" : "");
         m.textContent = labels[i - min] || i;
         container.appendChild(m);
+        // Insert SHUFFLE divider after the specified position
+        if (shuffleAfter && i === shuffleAfter) {
+            const s = document.createElement("div");
+            s.className = "shuffle-divider";
+            s.textContent = "⟡";
+            s.title = "SHUFFLE";
+            container.appendChild(s);
+        }
     }
 }
 

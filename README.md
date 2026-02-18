@@ -9,11 +9,11 @@ Run the automa entirely from your phone or laptop — no physical cards needed.
 
 - **Full Automation mode** — the app drives the entire automa turn: flips cards, adjusts competition tracks, recruits employees, manages inventory, and walks you through every phase.
 - **Quick Mode** — draw a card and manually update tracks for a lighter experience.
-- **Card images** extracted directly from the official PDF, cropped to the gray box borders.
+- **Card data driven** — all 44 cards defined in a single YAML file (`game/cards.yaml`); card images extracted from the official PDF.
+- **15 Ketchup expansion modules** — toggle each module independently (coffee, sushi, noodle, kimchi, gourmet, mass marketeer, rural marketeer, night shift, ketchup, fry chefs, movie stars, reserve prices, lobbyists, new districts, milestones) with Enable All / Disable All buttons.
 - **Save / Load** — persist game state to JSON; auto-save after every phase.
 - **Undo** — step back to the previous phase.
 - **Bilingual UI** — English / Spanish, togglable at any time.
-- **Expansion toggles** — enable/disable Ketchup & Mustard, The CFO, and Milestones when starting a new game.
 - **Mobile-first responsive design** — works on phones, tablets, and desktops.
 
 ---
@@ -22,15 +22,13 @@ Run the automa entirely from your phone or laptop — no physical cards needed.
 
 ```
 TheChain/
-├── app.py                   # Flask server & REST API
+├── app.py                   # Flask server & REST API (port 8000)
 ├── requirements.txt         # Python dependencies
-├── Cartas.pdf               # Source PDF with 44 card designs
-├── Tableros.pdf             # Source PDF with game mats/boards
-├── Manual.pdf               # Automa rules reference
 │
 ├── game/                    # Core game logic (pure Python)
 │   ├── models.py            # Data models, enums, dataclasses
-│   ├── cards.py             # All 44 cards encoded as structured data
+│   ├── cards.py             # YAML parser → Card objects
+│   ├── cards.yaml           # All 44 cards as structured YAML data
 │   ├── engine.py            # State-machine game engine
 │   └── save_manager.py      # JSON serialisation / deserialisation
 │
@@ -47,6 +45,8 @@ TheChain/
 │   ├── cards/               # 88 PNG card images (44 × front/back)
 │   └── boards/              # 3 PNG mat images (inventory ×2, tracks)
 │
+├── agent_support_files/     # Reference data used during development
+│
 └── saves/                   # Game save files (JSON)
 ```
 
@@ -60,7 +60,7 @@ TheChain/
 pip install -r requirements.txt
 ```
 
-**Requirements:** Python 3.8+, Flask, PyMuPDF, Pillow, PyPDF2.
+**Requirements:** Python 3.10+, Flask, PyMuPDF, Pillow, PyPDF2.
 
 ### 2. Extract card & board images (one-time)
 
@@ -77,7 +77,7 @@ Output: `static/cards/` (88 PNGs) and `static/boards/` (3 PNGs).
 python app.py
 ```
 
-Open **http://localhost:5000** in your browser (or use your LAN IP to play from a phone on the same network).
+Open **http://localhost:8000** in your browser (or use your LAN IP to play from a phone on the same network).
 
 ---
 
@@ -93,14 +93,32 @@ Open **http://localhost:5000** in your browser (or use your LAN IP to play from 
 ### Turn Phases (Full mode)
 
 1. **Restructuring** — flip the top Action card; adjust competition level based on the card face.
-2. **Recruit & Train** — execute action slots (recruit employees, marketers; place map tiles).
-3. **Get Food** — automa stocks inventory based on demand rules.
-4. **Marketing** — place marketing campaigns if the card instructs.
-5. **Develop** — resolve development actions.
-6. **Lobby** — resolve lobby/political actions.
-7. **Expand Chain** — open new restaurants if triggered.
+2. **Recruit & Train** — execute action slots (recruit employees, marketers; place map tiles). Slots activated depend on the Recruit & Train track position.
+3. **Get Food & Drinks** — automa stocks inventory. Each back card has two independent boxes:
+   - **Left box** — demand-based (most demand, all demand, or a specific item) with its own ×1 or ×2 multiplier.
+   - **Right box** — a specific module item (coffee/sushi/noodle) with fallback if the module is inactive, and its own ×1 or ×2 multiplier.
+   - Both boxes multiply by the green section value of the Recruit & Train track.
+4. **Marketing** — place marketing campaigns using the card's market item and map tile.
+5. **Develop** — place houses or gardens based on the card's develop instruction.
+6. **Lobby** — place roads or parks based on the card's lobby instruction.
+7. **Expand Chain** — open new restaurants if triggered by star icons.
 8. **Dinnertime** — you report your earnings vs. the automa's to adjust the competition track.
-9. **Cleanup** — drop perishable inventory, advance turn counter, check for game-end.
+9. **Cleanup** — adjust tracks (distance, waitress, recruit & train), handle kimchi/inventory drops, advance turn counter, check for game-end.
+
+### Card Data Model
+
+Each of the 20 action cards encodes:
+
+| Side | Section | Fields |
+|------|---------|--------|
+| **Front** | Market item | `beer`, `lemonade`, `softdrink`, `pizza`, `burger` |
+| **Front** | 4 action slots (S1–S4) | type, target, module, fallback, star |
+| **Front** | Map tiles | expand_chain, market, coffee_shop, develop_lobby (1–9) |
+| **Back** | Get Food left box | demand type + optional food list + multiplier |
+| **Back** | Get Food right box | item + module + fallback + multiplier |
+| **Back** | Cleanup | 5 track adjustments |
+| **Back** | Develop | type (house/garden) + house number |
+| **Back** | Lobby | type (road/park) + optional house number |
 
 ### Competition Track
 
@@ -108,7 +126,31 @@ The competition level (Cold → Cool → Neutral → Warm → Hot) determines wh
 
 ### Recruit & Train Track
 
-Tracks the automa's workforce size. Higher positions unlock more action slots per turn and increase food acquisition.
+Tracks the automa's workforce size. Higher positions unlock more action slots per turn and increase food acquisition amounts.
+
+### Expansion Modules
+
+All 15 Ketchup expansion modules default to **off** and can be toggled independently:
+
+| Module | Description |
+|--------|-------------|
+| `coffee` | Coffee items & coffee shops |
+| `sushi` | Sushi items |
+| `noodle` | Noodle items |
+| `kimchi` | Kimchi items & cleanup bonuses |
+| `gourmet` | Gourmet Food Critic marketeer |
+| `mass_marketeer` | Mass Marketeer |
+| `rural_marketeer` | Rural Marketeer |
+| `night_shift` | Night Shift Manager |
+| `ketchup` | Ketchup base module |
+| `fry_chefs` | Fry Chefs |
+| `movie_stars` | Movie Stars |
+| `reserve_prices` | Reserve Prices |
+| `lobbyists` | Lobbyists |
+| `new_districts` | New Districts |
+| `milestones` | Milestones |
+
+When a module is **off**, any card slot or food item requiring it uses its fallback instead (or is skipped if no fallback exists).
 
 ---
 
@@ -118,15 +160,15 @@ All endpoints return JSON.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/game/new` | Start a new game. Body: `{ "expansions": [...] }` |
+| `POST` | `/api/game/new` | Start a new game. Body: `{ "modules": { ... } }` |
 | `GET`  | `/api/game/state` | Current game state (cards, tracks, inventory, phase, log) |
 | `POST` | `/api/game/advance` | Advance to the next phase |
-| `POST` | `/api/game/input` | Submit player input. Body: `{ "key": "...", "value": "..." }` |
+| `POST` | `/api/game/input` | Submit player input (demand info, tiebreaks, earnings, etc.) |
 | `POST` | `/api/game/undo` | Undo last phase |
 | `POST` | `/api/game/mode` | Switch mode. Body: `{ "mode": "full" \| "quick" }` |
 | `POST` | `/api/game/language` | Switch language. Body: `{ "lang": "en" \| "es" }` |
 | `POST` | `/api/game/quick/draw` | Quick mode: draw a card |
-| `POST` | `/api/game/quick/track` | Quick mode: update a track. Body: `{ "track": "...", "value": ... }` |
+| `POST` | `/api/game/quick/track` | Quick mode: update a track |
 | `POST` | `/api/game/save` | Save current game. Body: `{ "slot": "name" }` |
 | `POST` | `/api/game/load` | Load a save. Body: `{ "slot": "name" }` |
 | `GET`  | `/api/game/saves` | List all save slots |
@@ -150,8 +192,9 @@ For the board mats, it detects the bounding box of all non-white content and cro
 
 ## Tech Stack
 
-- **Backend:** Python 3.8+ / Flask
+- **Backend:** Python 3.10+ / Flask
 - **Frontend:** Vanilla HTML, CSS, JavaScript (no build step)
+- **Card data:** YAML (parsed at startup)
 - **PDF processing:** PyMuPDF (fitz), Pillow, NumPy
 - **Persistence:** JSON files
 - **Design:** Mobile-first, dark theme, responsive grid
