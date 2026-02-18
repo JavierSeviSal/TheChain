@@ -478,6 +478,20 @@ body {
     box-shadow: 0 0 8px var(--accent);
 }
 
+.track-markers .shuffle-divider {
+    width: 2px;
+    height: 24px;
+    margin: 0 3px;
+    background: var(--accent2);
+    border-radius: 1px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0;
+    opacity: 0.7;
+}
+
 .track-value {
     font-size: 1.2rem;
     font-weight: 700;

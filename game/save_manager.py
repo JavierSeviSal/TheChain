@@ -208,7 +208,11 @@ def _deserialize_full_state(data: dict) -> GameState:
 
     # Restore tracks
     tracks_data = data.get("tracks", {})
-    state.tracks.recruit_train.position = tracks_data.get("recruit_train", 1)
+    rt_pos = tracks_data.get("recruit_train", 1)
+    state.tracks.recruit_train.position = max(
+        state.tracks.recruit_train.min_pos,
+        min(state.tracks.recruit_train.max_pos, rt_pos),
+    )
     state.tracks.price_distance.position = tracks_data.get("price_distance", 10)
     state.tracks.waitresses.position = tracks_data.get("waitresses", 0)
     state.tracks.competition = CompetitionLevel(tracks_data.get("competition", 2))

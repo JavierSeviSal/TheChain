@@ -728,6 +728,18 @@ class GameEngine:
                     f"Recruited {name} to Marketeer slot {slot.slot_number}.",
                     "recruit_train",
                 )
+                # Gourmet Food Critic: also place 1 garden on the map
+                if name == "Gourmet Food Critic":
+                    map_tiles = (
+                        self.state.current_back_card.get("map_tiles", {})
+                        if self.state.current_back_card
+                        else {}
+                    )
+                    dev_tile = map_tiles.get("develop_lobby", 1)
+                    self.state.log(
+                        f"Gourmet Food Critic: Place 1 garden on the map. Target tile: {dev_tile}",
+                        "recruit_train",
+                    )
                 return f"Recruited: {name} (slot {slot.slot_number})"
 
         # No open slots
@@ -1084,7 +1096,7 @@ class GameEngine:
         )
         dev_tile = map_tiles.get("develop_lobby", 1)
 
-        has_develop = "develop" in stars or "garden" in stars
+        has_develop = "develop" in stars
         dev_type = back.get("develop_type")
         dev_house = back.get("develop_house")
         if has_develop and dev_type:
