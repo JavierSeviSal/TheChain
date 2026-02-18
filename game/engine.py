@@ -17,8 +17,20 @@ from .models import (
     MarketeerSlot,
     RECRUIT_TRAIN_TRACK,
     FoodItem,
+    CORE_FOOD_ITEMS,
 )
 from .cards import create_all_decks
+
+
+def _is_item_available(item: str, modules: dict) -> bool:
+    """Check whether a food/drink item is available given the active modules.
+
+    Core items (burger, pizza, beer, lemonade, softdrink) are always available.
+    Expansion items (sushi, noodle, coffee, kimchi) require their module to be on.
+    """
+    if item in CORE_FOOD_ITEMS:
+        return True
+    return modules.get(item, False)
 
 
 class GameEngine:
@@ -194,6 +206,10 @@ class GameEngine:
             self.state.pending_input = None
             return self._resolve_get_food(input_data)
 
+        elif input_type == "demand_tiebreak":
+            # Player provides house demand counts to break a tie
+            return self._resolve_demand_tiebreak(input_data)
+
         elif input_type == "bank_break":
             self.state.bank_breaks += 1
             self.state.log(f"Bank break #{self.state.bank_breaks}!", "game")
@@ -228,14 +244,29 @@ class GameEngine:
     # ─── First turn ──────────────────────────────────────────────────────
 
     def _do_first_turn(self) -> dict:
-        """Handle the Chain's first turn: just place first restaurant."""
+        """Handle the Chain's first turn: draw top card, show it, place first restaurant."""
         self.state.log("=== THE CHAIN'S FIRST TURN ===", "phase")
         self.state.log("The Chain is first in turn order.", "setup")
 
+        # Draw the top card so the player can see the expand_chain tile
+        top_card = self.state.action_deck.peek()
+        if top_card:
+            card_data = top_card.to_dict()
+            self.state.current_front_card = card_data
+            map_tile = card_data.get("map_tiles", {}).get("expand_chain", 1)
+            self.state.log(
+                f"First card revealed: #{top_card.card_number}. "
+                f"Use expand_chain tile {map_tile} for placement.",
+                "setup",
+            )
+        else:
+            card_data = None
+            map_tile = 1
+
         self.state.pending_input = {
             "type": "first_restaurant_placed",
-            "prompt": "Place The Chain's first restaurant on the board.",
-            "prompt_es": "Coloca el primer restaurante de La Cadena en el tablero.",
+            "prompt": f"Place The Chain's first restaurant. Target map tile: {map_tile}",
+            "prompt_es": f"Coloca el primer restaurante de La Cadena. Casilla objetivo: {map_tile}",
             "fields": [
                 {
                     "name": "tile",
@@ -244,6 +275,7 @@ class GameEngine:
                     "type": "number",
                     "min": 1,
                     "max": 9,
+                    "default": map_tile,
                 },
             ],
         }
@@ -331,9 +363,19 @@ class GameEngine:
             if card1:
                 self.state.action_deck.place_on_top(card1)
                 msgs.append(f"HOT: Warm card placed on top of Action Deck.")
+            else:
+                self.state.log(
+                    "Warm deck exhausted — cannot place card on top.", "warning"
+                )
+                msgs.append("HOT: Warm deck empty — no card placed on top.")
             if card2:
                 self.state.action_deck.place_under(card2)
                 msgs.append(f"Warm card placed under Action Deck.")
+            else:
+                self.state.log(
+                    "Warm deck exhausted — cannot place card under.", "warning"
+                )
+                msgs.append("Warm deck empty — no card placed under.")
             # Move marker down to WARM
             self.state.tracks.competition = CompetitionLevel.WARM
             msgs.append(f"Competition moved to WARM.")
@@ -352,6 +394,9 @@ class GameEngine:
                 self.state.log(
                     "Competition WARM → placed Warm card under deck.", "restructuring"
                 )
+            else:
+                self.state.log("Warm deck exhausted — no card to place.", "warning")
+                msgs.append("WARM: Warm deck empty — no card placed.")
 
         elif level == CompetitionLevel.NEUTRAL:
             msgs.append("NEUTRAL: No competition adjustment.")
@@ -365,6 +410,9 @@ class GameEngine:
                 self.state.log(
                     "Competition COOL → placed Cool card under deck.", "restructuring"
                 )
+            else:
+                self.state.log("Cool deck exhausted — no card to place.", "warning")
+                msgs.append("COOL: Cool deck empty — no card placed.")
 
         elif level == CompetitionLevel.COLD:
             card1 = self.state.cool_deck.draw()
@@ -372,9 +420,19 @@ class GameEngine:
             if card1:
                 self.state.action_deck.place_on_top(card1)
                 msgs.append("COLD: Cool card placed on top of Action Deck.")
+            else:
+                self.state.log(
+                    "Cool deck exhausted — cannot place card on top.", "warning"
+                )
+                msgs.append("COLD: Cool deck empty — no card placed on top.")
             if card2:
                 self.state.action_deck.place_under(card2)
                 msgs.append("Cool card placed under Action Deck.")
+            else:
+                self.state.log(
+                    "Cool deck exhausted — cannot place card under.", "warning"
+                )
+                msgs.append("Cool deck empty — no card placed under.")
             self.state.tracks.competition = CompetitionLevel.COOL
             msgs.append("Competition moved to COOL.")
             self.state.log(
@@ -543,17 +601,17 @@ class GameEngine:
 
         open_slots = self.state.tracks.get_open_slots()
         actions = front_card_data["front"]["actions"]
-        stars = front_card_data["front"]["stars"]
 
-        # Determine which actions to take based on open slots
-        # 4 slots: all 4 actions (descending: 4,3,2,1)
-        # 3 slots: skip top, take 3 descending (4,3,2)
-        # 2 slots: skip top 2, take 2 descending (4,3)
-        # 1 slot: skip top 3, take bottom only (4)
+        # Actions are listed ascending [S1, S2, S3, S4] (bottom to top on card)
+        # Open slots are the LOWEST slots on the card:
+        #   1 slot  → only S1
+        #   2 slots → S1, S2   (executed top-down: S2 then S1)
+        #   3 slots → S1–S3    (executed top-down: S3, S2, S1)
+        #   4 slots → all      (executed top-down: S4, S3, S2, S1)
+        # Execution order is always descending (highest open slot first).
 
-        skip = 4 - open_slots
-        active_actions = actions[skip:]  # Take from skip index to end
-        # Execute in descending order (bottom to top of the selected ones)
+        active_actions = actions[:open_slots]  # Take the N lowest slots
+        # Execute in descending order (highest slot number first)
         active_actions_reversed = list(reversed(active_actions))
 
         result_msgs = []
@@ -566,8 +624,9 @@ class GameEngine:
             "recruit_train",
         )
 
-        # Store stars for later phases
-        self.state._pending_stars = stars  # Will check in develop/lobby/expand
+        # Collect stars only from the active (open) slots
+        stars = [a["star"] for a in active_actions if a.get("star")]
+        self.state.pending_stars = stars
 
         self.state.phase = GamePhase.GET_FOOD
         return {
@@ -588,12 +647,15 @@ class GameEngine:
         # Check if module is required but not active
         if requires and not self.state.modules.get(requires, False):
             if fallback:
+                foods = fallback if isinstance(fallback, list) else [fallback]
+                for f in foods:
+                    self.state.inventory.add(f, 1)
+                names = ", ".join(foods)
                 self.state.log(
-                    f"Module '{requires}' not in play. Getting {fallback} instead.",
+                    f"Module '{requires}' not in play. Getting {names} instead.",
                     "recruit_train",
                 )
-                self.state.inventory.add(fallback, 1)
-                return f"GET FOOD: +1 {fallback} (module not in play)"
+                return f"GET FOOD: +1 {names} (module not in play)"
             return f"Skipped (module '{requires}' not in play)"
 
         if action_type == "recruit_marketeer":
@@ -620,6 +682,15 @@ class GameEngine:
                 self.state.log(
                     "Waitresses reached 4! Recruit highest-ranking movie star.",
                     "recruit_train",
+                )
+            # Milestone: first to have a waitress
+            if (
+                new > 0
+                and "first_to_have_waitress" not in self.state.milestones_claimed
+            ):
+                self.state.milestones_claimed.append("first_to_have_waitress")
+                self.state.log(
+                    "Milestone claimed: First to Have a Waitress!", "milestone"
                 )
             return f"Waitresses: {old} → {new}"
         elif action_type == "claim_milestone":
@@ -731,18 +802,24 @@ class GameEngine:
         food_amount = self.state.tracks.get_food_amount()
 
         if demand_type == "specific":
-            # Add specific items
+            # Left box: add specific items
             for item in food_items:
                 if item in [fi.value for fi in FoodItem]:
-                    if self.state.modules.get(item, True):  # Check module active
+                    if _is_item_available(item, self.state.modules):
                         self.state.inventory.add(item, food_amount * multiplier)
                         self.state.log(
                             f"+{food_amount * multiplier} {item}", "get_food"
                         )
+                    else:
+                        self.state.log(
+                            f"Skipped {item} (module not in play)", "get_food"
+                        )
+            # Right box: add food_item (with module/fallback)
+            self._add_right_box_food(back, food_amount)
             self.state.phase = GamePhase.MARKETING
             return {
                 "status": "ok",
-                "message": f"Added {food_amount}× of: {', '.join(food_items)}",
+                "message": f"Added food from card.",
                 "next_phase": "marketing",
             }
         else:
@@ -763,18 +840,18 @@ class GameEngine:
                         "options": [
                             fi.value
                             for fi in FoodItem
-                            if self.state.modules.get(fi.value, True)
+                            if _is_item_available(fi.value, self.state.modules)
                         ],
                     },
                     {
-                        "name": "most_demand_item",
-                        "label": "Item with MOST demand tokens",
-                        "label_es": "Item con MÁS fichas de demanda",
-                        "type": "select",
+                        "name": "most_demand_items",
+                        "label": "Item(s) with MOST demand tokens (select all tied items)",
+                        "label_es": "Item(s) con MÁS fichas de demanda (selecciona todos los empatados)",
+                        "type": "multiselect",
                         "options": [
                             fi.value
                             for fi in FoodItem
-                            if self.state.modules.get(fi.value, True)
+                            if _is_item_available(fi.value, self.state.modules)
                         ],
                         "condition": demand_type == "most_demand",
                     },
@@ -799,7 +876,7 @@ class GameEngine:
         food_amount = self.state.tracks.get_food_amount()
 
         items_with_demand = input_data.get("items_with_demand", [])
-        most_demand_item = input_data.get("most_demand_item", "")
+        most_demand_items = input_data.get("most_demand_items", [])
 
         added = []
         if demand_type == "all_demand":
@@ -809,11 +886,46 @@ class GameEngine:
                 added.append(f"+{amount} {item}")
                 self.state.log(f"All demand: +{amount} {item}", "get_food")
         elif demand_type == "most_demand":
-            if most_demand_item:
+            if len(most_demand_items) == 1:
+                # Single winner — no tie
+                item = most_demand_items[0]
                 amount = food_amount * multiplier
-                self.state.inventory.add(most_demand_item, amount)
-                added.append(f"+{amount} {most_demand_item}")
-                self.state.log(f"Most demand: +{amount} {most_demand_item}", "get_food")
+                self.state.inventory.add(item, amount)
+                added.append(f"+{amount} {item}")
+                self.state.log(f"Most demand: +{amount} {item}", "get_food")
+            elif len(most_demand_items) > 1:
+                # Tie! Ask for demand tokens on houses to break it
+                self.state.pending_input = {
+                    "type": "demand_tiebreak",
+                    "prompt": f"Tie between {', '.join(most_demand_items)}! How many demand tokens on HOUSES for each?",
+                    "prompt_es": f"¡Empate entre {', '.join(most_demand_items)}! ¿Cuántas fichas de demanda en CASAS para cada uno?",
+                    "tied_items": most_demand_items,
+                    "multiplier": multiplier,
+                    "food_amount": food_amount,
+                    "fields": [
+                        {
+                            "name": f"house_demand_{item}",
+                            "label": f"Demand on houses: {item}",
+                            "label_es": f"Demanda en casas: {item}",
+                            "type": "number",
+                            "min": 0,
+                            "max": 50,
+                            "default": 0,
+                        }
+                        for item in most_demand_items
+                    ],
+                }
+                self.state.phase = GamePhase.WAITING_FOR_INPUT
+                return {
+                    "status": "waiting",
+                    "message": f"Tie for most demand between: {', '.join(most_demand_items)}. Need house demand info.",
+                    "input_needed": self.state.pending_input,
+                }
+            else:
+                self.state.log("No most demand item selected.", "get_food")
+
+        # Right box: add food_item (with module/fallback)
+        self._add_right_box_food(back, food_amount)
 
         self.state.phase = GamePhase.MARKETING
         return {
@@ -822,22 +934,123 @@ class GameEngine:
             "next_phase": "marketing",
         }
 
+    def _resolve_demand_tiebreak(self, input_data: dict) -> dict:
+        """Resolve tie in most demand using demand tokens on houses, then random."""
+        pending = self.state.pending_input or {}
+        tied_items = pending.get("tied_items", [])
+        multiplier = pending.get("multiplier", 1)
+        food_amount = pending.get("food_amount", 1)
+
+        # Collect house demand counts from user input
+        house_counts = {}
+        for item in tied_items:
+            house_counts[item] = input_data.get(f"house_demand_{item}", 0)
+
+        max_count = max(house_counts.values()) if house_counts else 0
+        winners = [item for item, count in house_counts.items() if count == max_count]
+
+        if len(winners) == 1:
+            winner = winners[0]
+            self.state.log(
+                f"Tiebreak by houses: {winner} ({max_count} on houses)", "get_food"
+            )
+        else:
+            winner = random.choice(winners)
+            self.state.log(
+                f"Tiebreak random: {winner} (still tied on houses)", "get_food"
+            )
+
+        amount = food_amount * multiplier
+        self.state.inventory.add(winner, amount)
+        self.state.log(f"Most demand: +{amount} {winner}", "get_food")
+
+        # Right box: add food_item (with module/fallback)
+        back = (
+            self.state.current_back_card.get("back", {})
+            if self.state.current_back_card
+            else {}
+        )
+        self._add_right_box_food(back, food_amount)
+
+        self.state.pending_input = None
+        self.state.phase = GamePhase.MARKETING
+        return {
+            "status": "ok",
+            "message": f"Food added: +{amount} {winner}",
+            "next_phase": "marketing",
+        }
+
+    # ─── Marketing ───────────────────────────────────────────────────────
+
+    def _add_right_box_food(self, back: dict, food_amount: int):
+        """Process the right-box food_item from the back card.
+
+        Adds the indicated food/drink. If the item's module is inactive,
+        uses the fallback item instead. If no fallback, skips.
+        The right-box has its own multiplier (food_item_multiply), independent
+        of the left-box multiplier.
+        """
+        fi = back.get("food_item")
+        if not fi:
+            return
+        fi_module = back.get("food_item_module")
+        fi_fallback = back.get("food_item_fallback")
+        fi_multiply = back.get("food_item_multiply", 1)
+        amount = food_amount * fi_multiply
+
+        if fi_module and not self.state.modules.get(fi_module, False):
+            # Module inactive — use fallback
+            if fi_fallback:
+                self.state.inventory.add(fi_fallback, amount)
+                self.state.log(
+                    f"+{amount} {fi_fallback} (fallback, {fi_module} not in play)",
+                    "get_food",
+                )
+            else:
+                self.state.log(
+                    f"Skipped {fi} ({fi_module} not in play, no fallback)",
+                    "get_food",
+                )
+        else:
+            self.state.inventory.add(fi, amount)
+            self.state.log(f"+{amount} {fi}", "get_food")
+
     # ─── Marketing ───────────────────────────────────────────────────────
 
     def _do_marketing(self) -> dict:
         """MARKETING phase: activate newly placed marketeers."""
         self.state.log(f"=== MARKETING ===", "phase")
 
+        # Get market tile and market item from current card
+        map_tiles = (
+            self.state.current_front_card.get("map_tiles", {})
+            if self.state.current_front_card
+            else {}
+        )
+        market_tile = map_tiles.get("market", 1)
+
+        front = (
+            self.state.current_front_card.get("front", {})
+            if self.state.current_front_card
+            else {}
+        )
+        market_item = front.get("market_item") or "unknown"
+
         campaigns = []
         for slot in self.state.marketeer_slots:
             if slot.marketeer and not slot.is_busy:
                 slot.is_busy = True
                 campaigns.append(
-                    f"{slot.marketeer} (slot {slot.slot_number}) initiates marketing campaign"
+                    f"{slot.marketeer} (slot {slot.slot_number}) markets {market_item} on tile {market_tile}"
                 )
                 self.state.log(
-                    f"{slot.marketeer} starts a marketing campaign.", "marketing"
+                    f"{slot.marketeer} markets {market_item}. Target tile: {market_tile}",
+                    "marketing",
                 )
+                # Milestone: first to market
+                if "first_to_market" not in self.state.milestones_claimed:
+                    self.state.milestones_claimed.append("first_to_market")
+                    self.state.log("Milestone claimed: First to Market!", "milestone")
 
         if self.state.mass_marketeer:
             campaigns.append("Mass Marketeer runs additional marketing campaign")
@@ -858,21 +1071,39 @@ class GameEngine:
         """DEVELOP phase: place house/garden if star on card."""
         self.state.log(f"=== DEVELOP ===", "phase")
 
-        stars = getattr(self.state, "_pending_stars", [])
+        stars = getattr(self.state, "pending_stars", [])
         back = (
             self.state.current_back_card.get("back", {})
             if self.state.current_back_card
             else {}
         )
+        map_tiles = (
+            self.state.current_back_card.get("map_tiles", {})
+            if self.state.current_back_card
+            else {}
+        )
+        dev_tile = map_tiles.get("develop_lobby", 1)
 
-        if "develop" in stars and back.get("develop_target"):
-            target = back["develop_target"]
-            self.state.log(f"DEVELOP ★: Place {target}.", "develop")
+        has_develop = "develop" in stars or "garden" in stars
+        dev_type = back.get("develop_type")
+        dev_house = back.get("develop_house")
+        if has_develop and dev_type:
+            if dev_type == "garden":
+                desc = (
+                    f"Place garden next to house #{dev_house}"
+                    if dev_house
+                    else "Place garden"
+                )
+            else:
+                desc = f"Place house #{dev_house}" if dev_house else "Place house"
+            self.state.log(f"DEVELOP ★: {desc}. Target tile: {dev_tile}", "develop")
             self.state.phase = GamePhase.LOBBY
             return {
                 "status": "ok",
-                "message": f"DEVELOP: Place {target.replace('_', ' ')}.",
-                "instruction": target,
+                "message": f"DEVELOP: {desc}. Target tile: {dev_tile}",
+                "develop_type": dev_type,
+                "develop_house": dev_house,
+                "map_tile": dev_tile,
                 "next_phase": "lobby",
             }
 
@@ -887,21 +1118,38 @@ class GameEngine:
         """LOBBY phase: place road/park if star on card."""
         self.state.log(f"=== LOBBY ===", "phase")
 
-        stars = getattr(self.state, "_pending_stars", [])
+        stars = getattr(self.state, "pending_stars", [])
         back = (
             self.state.current_back_card.get("back", {})
             if self.state.current_back_card
             else {}
         )
+        map_tiles = (
+            self.state.current_back_card.get("map_tiles", {})
+            if self.state.current_back_card
+            else {}
+        )
+        dev_tile = map_tiles.get("develop_lobby", 1)
 
-        if "lobby" in stars and back.get("lobby_target"):
-            target = back["lobby_target"]
-            self.state.log(f"LOBBY ★: Place {target}.", "lobby")
+        lobby_type = back.get("lobby_type")
+        lobby_house = back.get("lobby_house")
+        if "lobby" in stars and lobby_type:
+            if lobby_type == "park":
+                desc = (
+                    f"Place park next to house #{lobby_house}"
+                    if lobby_house
+                    else "Place park"
+                )
+            else:
+                desc = "Place road"
+            self.state.log(f"LOBBY ★: {desc}. Target tile: {dev_tile}", "lobby")
             self.state.phase = GamePhase.EXPAND_CHAIN
             return {
                 "status": "ok",
-                "message": f"LOBBY: Place {target.replace('_', ' ')}.",
-                "instruction": target,
+                "message": f"LOBBY: {desc}. Target tile: {dev_tile}",
+                "lobby_type": lobby_type,
+                "lobby_house": lobby_house,
+                "map_tile": dev_tile,
                 "next_phase": "expand_chain",
             }
 
@@ -916,13 +1164,13 @@ class GameEngine:
         """EXPAND CHAIN phase: place new restaurant if star on card."""
         self.state.log(f"=== EXPAND CHAIN ===", "phase")
 
-        stars = getattr(self.state, "_pending_stars", [])
-        front = (
-            self.state.current_front_card.get("front", {})
+        stars = getattr(self.state, "pending_stars", [])
+        map_tiles = (
+            self.state.current_front_card.get("map_tiles", {})
             if self.state.current_front_card
             else {}
         )
-        map_tile = front.get("map_tile", 1)
+        map_tile = map_tiles.get("expand_chain", 1)
 
         if (
             "expand_chain" in stars
@@ -958,11 +1206,15 @@ class GameEngine:
 
         # Coffee shop check
         if "coffee_shop" in stars and self.state.modules.get("coffee"):
-            self.state.log("COFFEE SHOP ★: Place a coffee shop if available.", "expand")
+            coffee_tile = map_tiles.get("coffee_shop", 1)
+            self.state.log(
+                f"COFFEE SHOP ★: Place a coffee shop if available. Target tile: {coffee_tile}",
+                "expand",
+            )
             self.state.phase = GamePhase.DINNERTIME
             return {
                 "status": "ok",
-                "message": "COFFEE SHOP: Place a coffee shop if available.",
+                "message": f"COFFEE SHOP: Place a coffee shop if available. Target tile: {coffee_tile}",
                 "next_phase": "dinnertime",
             }
 
@@ -975,7 +1227,7 @@ class GameEngine:
 
     def _continue_after_stars(self) -> dict:
         """Continue the phase flow after handling star actions."""
-        stars = getattr(self.state, "_pending_stars", [])
+        stars = getattr(self.state, "pending_stars", [])
 
         # Check if we still need coffee shop
         if "coffee_shop" in stars and self.state.modules.get("coffee"):
@@ -1046,24 +1298,24 @@ class GameEngine:
         cleanup_actions = back.get("cleanup_actions", [])
 
         msgs = []
-
-        # GET KIMCHI: if Kimchi Master is in employee pile
-        if (
-            "Kimchi Master" in [s.marketeer for s in self.state.marketeer_slots]
-            or "Kimchi Master" in self.state.employee_pile
-        ):
-            if self.state.modules.get("kimchi"):
-                self.state.inventory.add("kimchi", 1)
-                msgs.append("Kimchi +1")
-                self.state.log("Kimchi Master: +1 kimchi.", "cleanup")
-
         shuffle_needed = False
 
         for ca in cleanup_actions:
             ca_type = ca["type"]
             ca_value = ca["value"]
 
-            if ca_type == "move_distance" and ca_value != 0:
+            if ca_type == "get_kimchi" and ca_value != 0:
+                # GET KIMCHI: if Kimchi Master is in employee pile and kimchi module active
+                if (
+                    "Kimchi Master" in [s.marketeer for s in self.state.marketeer_slots]
+                    or "Kimchi Master" in self.state.employee_pile
+                ):
+                    if self.state.modules.get("kimchi"):
+                        self.state.inventory.add("kimchi", 1)
+                        msgs.append("Kimchi +1")
+                        self.state.log("Kimchi Master: +1 kimchi.", "cleanup")
+
+            elif ca_type == "move_distance" and ca_value != 0:
                 old, new, _ = self.state.tracks.price_distance.move(ca_value)
                 msgs.append(f"Distance: {old}→{new}")
                 self.state.log(f"Cleanup: Price+Distance {old} → {new}", "cleanup")
@@ -1073,7 +1325,7 @@ class GameEngine:
                 msgs.append(f"Waitress: {old}→{new}")
                 self.state.log(f"Cleanup: Waitresses {old} → {new}", "cleanup")
 
-            elif ca_type == "inventory_drop":
+            elif ca_type == "inventory_drop" and ca_value != 0:
                 self.state.inventory.inventory_drop()
                 msgs.append("Inventory drop (top→bottom)")
                 self.state.log("Cleanup: Inventory drop.", "cleanup")
@@ -1115,8 +1367,7 @@ class GameEngine:
         self.state.phase = GamePhase.RESTRUCTURING
 
         # Clear pending stars
-        if hasattr(self.state, "_pending_stars"):
-            delattr(self.state, "_pending_stars")
+        self.state.pending_stars = []
 
         result_msg = "Cleanup complete: " + (
             " | ".join(msgs) if msgs else "no adjustments"
@@ -1160,6 +1411,7 @@ class GameEngine:
         self.state.restaurants = snapshot.get("restaurants", [])
         self.state.employee_pile = snapshot.get("employee_pile", [])
         self.state.mass_marketeer = snapshot.get("mass_marketeer", False)
+        self.state.pending_stars = snapshot.get("pending_stars", [])
 
         # Restore tracks
         tracks_data = snapshot.get("tracks", {})

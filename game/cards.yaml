@@ -1,0 +1,485 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# The Chain Automa – Card Definitions
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# This file defines all 44 cards used by the automa:
+#   - 20 Action Deck cards  (front + back)
+#   - 12 Warm Competition cards
+#   - 12 Cool Competition cards
+#
+# EDITING GUIDE
+# ─────────────
+# Action card MAP TILES (one 3×3 grid per card):
+#   map_tiles:
+#     expand_chain:  Map tile for placing new restaurants (red on card)
+#     market:        Map tile for placing marketing campaigns (blue on card)
+#     coffee_shop:   Map tile for placing coffee shops (teal on card)
+#     develop_lobby: Map tile for placing houses/roads (purple on card)
+#
+# Action card FRONT (Recruit & Train side):
+#   market:   Food/drink item shown on the lower-left corner of the front
+#             (beer, lemonade, softdrink, pizza, burger)
+#   actions:  List of 4 slots ordered ascending (S1 → S4, bottom → top on card):
+#     - type:     recruit_marketeer | recruit_employee | move_distance |
+#                 move_waitress | claim_milestone | get_food
+#     - target:   Employee name, "+1"/"-3", milestone id, or food name
+#     - module:   (optional) Expansion module required: coffee | sushi | noodle | kimchi |
+#                 gourmet | mass_marketeer | rural_marketeer | night_shift
+#     - fallback: (optional) Food(s) gained when module inactive. String or list.
+#     - star:     (optional) Star icon on this slot: expand_chain | coffee_shop |
+#                 develop | lobby | garden. Stars fire only if their slot is active.
+#
+# Action card BACK (Get Food & Drinks / Cleanup side):
+#   demand:    most_demand | all_demand | specific
+#   foods:     (only for "specific") List of food items (left box)
+#   multiply:  Demand multiplier (1 or 2)
+#   food_item: { item: <food>, module: <mod>, fallback: <food>, multiply: <n> }  (right box)
+#              item:     the food/drink to add (always a module item)
+#              module:   required expansion module (coffee | sushi | noodle)
+#              fallback: (optional) food given if module is inactive
+#              multiply: (optional, default 1) right-box multiplier (1 or 2)
+#   cleanup:   5 values → [get_kimchi, distance, waitress, inventory_drop, recruit_train]
+#   develop:  { type: house|garden, house: <number> }
+#             type: house = place a house, garden = place a garden
+#             house: the house number to develop / place garden next to
+#   lobby:    { type: road|park, house: <number> }
+#             type: road = place a road, park = place a park
+#             house: (optional) house number to place the park next to
+#
+# Warm competition cards:
+#   effect:     expand_chain | coffee_shop_or_expand | bonus_cash
+#   food_adj:   List of {item, amount} adjustments
+#   boost:      (optional) true if inventory boost applies
+#   map_tile:   Map tile indicator
+#
+# Cool competition cards:
+#   effect:     no_driveins | fire_employees | pay_per_employee
+#   loss_items: Food items lost from inventory
+#   map_tile:   Map tile indicator
+# ──────────────────────────────────────────────────────────────────────────────
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ACTION DECK  (20 cards)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+action_cards:
+
+# ── Card 1 ────────────────────────────────────────────────────────────────
+- number: 1
+  map_tiles: { expand_chain: 7, market: 1, coffee_shop: 5, develop_lobby: 2 }
+  front:
+    market: beer
+    actions:
+    - { type: move_waitress, target: "+1" }
+    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade, star: garden }
+    - { type: recruit_employee, target: Burger Chef, star: expand_chain }
+    - { type: recruit_employee, target: Zeppelin Pilot, star: coffee_shop }
+  back:
+    demand: most_demand
+    multiply: 2
+    food_item: { item: noodle, module: noodle, fallback: burger }
+    cleanup: [ 1, 1, 0, 0, -1 ]
+    develop: { type: house, house: 1 }
+    lobby: { type: park, house: 25 }
+
+# ── Card 2 ────────────────────────────────────────────────────────────────
+- number: 2
+  map_tiles: { expand_chain: 5, market: 2, coffee_shop: 4, develop_lobby: 1 }
+  front:
+    market: lemonade
+    actions:
+    - { type: move_waitress, target: "+1" }
+    - { type: recruit_marketeer, target: Campaign Manager, star: lobby }
+    - { type: recruit_employee, target: Sushi Chef, module: sushi, fallback: pizza, star: develop }
+    - { type: recruit_employee, target: Zeppelin Pilot }
+  back:
+    demand: most_demand
+    multiply: 2
+    food_item: { item: sushi, module: sushi, fallback: pizza }
+    cleanup: [ 1, 0, 0, 1, -3 ]
+    develop: { type: house, house: 3 }
+    lobby: { type: park, house: pi }
+
+# ── Card 3 ────────────────────────────────────────────────────────────────
+- number: 3
+  map_tiles: { expand_chain: 1, market: 3, coffee_shop: 2, develop_lobby: 9 }
+  front:
+    market: softdrink
+    actions:
+    - { type: recruit_employee, target: Night Shift Manager, module: night_shift, fallback: pizza }
+    - { type: claim_milestone, target: first_cart_operator, star: expand_chain }
+    - { type: recruit_marketeer, target: Brand Manager, star: lobby }
+    - { type: recruit_employee, target: Zeppelin Pilot }
+  back:
+    demand: most_demand
+    multiply: 2
+    food_item: { item: coffee, module: coffee, fallback: softdrink }
+    cleanup: [ 1, 0, -3, 0, 2 ]
+    develop: { type: house, house: 6 }
+    lobby: { type: park, house: 22 }
+
+# ── Card 4 ────────────────────────────────────────────────────────────────
+- number: 4
+  map_tiles: { expand_chain: 2, market: 4, coffee_shop: 5, develop_lobby: 7 }
+  front:
+    market: pizza
+    actions:
+    - { type: recruit_marketeer, target: Marketing Trainee }
+    - { type: move_distance, target: "-3", star: expand_chain }
+    - { type: recruit_marketeer, target: Mass Marketeer, module: mass_marketeer, fallback: beer, star: lobby }
+    - { type: recruit_employee, target: Guru }
+
+  back:
+    demand: most_demand
+    multiply: 2
+    food_item: { item: coffee, module: coffee, fallback: beer }
+    cleanup: [ 1, 1, 0, 0, -2 ]
+    develop: { type: house, house: 6 }
+    lobby: { type: park, house: 4 }
+
+# ── Card 5 ────────────────────────────────────────────────────────────────
+- number: 5
+  map_tiles: { expand_chain: 2, market: 5, coffee_shop: 6, develop_lobby: 7 }
+  front:
+    market: burger
+    actions:
+    - { type: recruit_marketeer, target: Marketing Trainee }
+    - { type: move_waitress, target: "+1" }
+    - { type: claim_milestone, target: first_discount_manager, star: expand_chain }
+    - { type: recruit_employee, target: Guru, star: lobby }
+  back:
+    demand: most_demand
+    multiply: 2
+    food_item: { item: coffee, module: coffee, fallback: lemonade }
+    cleanup: [ 1, 2, 0, 0, -1 ]
+    develop: { type: house, house: 9 }
+    lobby: { type: park, house: 18 }
+
+# ── Card 6 ────────────────────────────────────────────────────────────────
+- number: 6
+  map_tiles: { expand_chain: 4, market: 6, coffee_shop: 1, develop_lobby: 5 }
+  front:
+    market: beer
+    actions:
+    - { type: recruit_employee, target: Kimchi Master, module: kimchi, fallback: burger, star: develop }
+    - { type: recruit_marketeer, target: Campaign Manager, star: coffee_shop }
+    - { type: move_distance, target: "-3" }
+    - { type: recruit_employee, target: Guru }
+  back:
+    demand: specific
+    foods: [ pizza ]
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: beer }
+    cleanup: [ 1, 1, 0, 0, -2 ]
+    develop: { type: house, house: 11 }
+    lobby: { type: park, house: 7 }
+
+# ── Card 7 ────────────────────────────────────────────────────────────────
+- number: 7
+  map_tiles: { expand_chain: 8, market: 7, coffee_shop: 3, develop_lobby: 6 }
+  front:
+    market: lemonade
+    actions:
+    - { type: move_waitress, target: "+1", star: expand_chain }
+    - { type: recruit_marketeer, target: Campaign Manager, star: develop }
+    - { type: recruit_employee, target: Lead Barista, module: coffee, fallback: [ lemonade, beer, softdrink ] }
+    - { type: recruit_employee, target: Executive VP }
+  back:
+    demand: all_demand
+    multiply: 1
+    food_item: { item: noodle, module: noodle, multiply: 2 }
+    cleanup: [ 1, 0, -1, 0, -1 ]
+    develop: { type: house, house: 14 }
+    lobby: { type: park, house: 15 }
+
+# ── Card 8 ────────────────────────────────────────────────────────────────
+- number: 8
+  map_tiles: { expand_chain: 3, market: 8, coffee_shop: 7, develop_lobby: 4 }
+  front:
+    market: softdrink
+    actions:
+    - { type: move_distance, target: "-1" }
+    - { type: recruit_marketeer, target: Rural Marketeer, module: rural_marketeer, fallback: softdrink, star: lobby }
+    - { type: recruit_employee, target: Pizza Chef, star: coffee_shop }
+    - { type: recruit_employee, target: Executive VP }
+
+  back:
+    demand: all_demand
+    multiply: 1
+    food_item: { item: sushi, module: sushi, multiply: 2 }
+    cleanup: [ 1, 0, -2, 0, 1 ]
+    develop: { type: house, house: 14 }
+    lobby: { type: park, house: 9.75 }
+
+# ── Card 9 ────────────────────────────────────────────────────────────────
+- number: 9
+  map_tiles: { expand_chain: 4, market: 9, coffee_shop: 8, develop_lobby: 3 }
+  front:
+    market: pizza
+    actions:
+    - { type: claim_milestone, target: first_to_throw_away, star: expand_chain }
+    - { type: recruit_marketeer, target: Gourmet Food Critic, module: gourmet, fallback: lemonade, star: garden }
+    - { type: move_distance, target: "-3", star: coffee_shop }
+    - { type: recruit_employee, target: Executive VP }
+  back:
+    demand: all_demand
+    multiply: 1
+    food_item: { item: coffee, module: coffee, multiply: 2 }
+    cleanup: [ 1, 0, 0, 1, 2 ]
+    develop: { type: house, house: 17 }
+    lobby: { type: park, house: 12 }
+
+# ── Card 10 ───────────────────────────────────────────────────────────────
+- number: 10
+  map_tiles: { expand_chain: 5, market: 1, coffee_shop: 3, develop_lobby: 8 }
+  front:
+    market: burger
+    actions:
+    - { type: move_distance, target: "-1" }
+    - { type: recruit_marketeer, target: Rural Marketeer, module: rural_marketeer, fallback: softdrink, star: lobby }
+    - { type: recruit_employee, target: Burger Chef, star: develop }
+    - { type: recruit_employee, target: CFO }
+  back:
+    demand: specific
+    foods: [ lemonade ]
+    multiply: 1
+    food_item: { item: sushi, module: sushi, fallback: pizza }
+    cleanup: [ 1, 0, -2, 0, 3 ]
+    develop: { type: house, house: 19 }
+    lobby: { type: park, house: 10 }
+
+# ── Card 11 ───────────────────────────────────────────────────────────────
+- number: 11
+  map_tiles: { expand_chain: 9, market: 2, coffee_shop: 4, develop_lobby: 1 }
+  front:
+    market: beer
+    actions:
+    - { type: recruit_employee, target: Kimchi Master, module: kimchi, fallback: burger, star: expand_chain }
+    - { type: recruit_employee, target: Luxuries Manager, star: coffee_shop }
+    - { type: recruit_marketeer, target: Brand Manager }
+    - { type: recruit_employee, target: CFO }
+  back:
+    demand: most_demand
+    multiply: 1
+    food_item: { item: sushi, module: sushi, fallback: pizza }
+    cleanup: [ 1, 3, 0, 0, 3 ]
+    develop: { type: garden, house: 2 }
+    lobby: { type: road }
+
+# ── Card 12 ───────────────────────────────────────────────────────────────
+- number: 12
+  map_tiles: { expand_chain: 6, market: 3, coffee_shop: 9, develop_lobby: 2 }
+  front:
+    market: lemonade
+    actions:
+    - { type: move_waitress, target: "+1", star: coffee_shop }
+    - { type: recruit_marketeer, target: Campaign Manager }
+    - { type: recruit_employee, target: Pizza Chef }
+    - { type: recruit_employee, target: HR Director, star: expand_chain }
+
+  back:
+    demand: most_demand
+    multiply: 1
+    food_item: { item: noodle, module: noodle, fallback: burger }
+    cleanup: [ 1, 2, 0, 0, 2 ]
+    develop: { type: garden, house: 5 }
+    lobby: { type: road }
+
+# ── Card 13 ───────────────────────────────────────────────────────────────
+- number: 13
+  map_tiles: { expand_chain: 5, market: 4, coffee_shop: 2, develop_lobby: 9 }
+  front:
+    market: softdrink
+    actions:
+    - { type: recruit_marketeer, target: Marketing Trainee, star: lobby }
+    - { type: move_waitress, target: "+1", star: coffee_shop }
+    - { type: recruit_employee, target: Sushi Chef, module: sushi, fallback: pizza }
+    - { type: recruit_employee, target: HR Director }
+  back:
+    demand: most_demand
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: softdrink }
+    cleanup: [ 1, 2, 0, 0, 1 ]
+    develop: { type: garden, house: 8 }
+    lobby: { type: road }
+
+# ── Card 14 ───────────────────────────────────────────────────────────────
+- number: 14
+  map_tiles: { expand_chain: 6, market: 5, coffee_shop: 8, develop_lobby: 4 }
+  front:
+    market: pizza
+    actions:
+    - { type: move_waitress, target: "+1" }
+    - { type: recruit_marketeer, target: Campaign Manager, star: develop }
+    - { type: move_distance, target: "-3", star: coffee_shop }
+    - { type: recruit_employee, target: Regional Manager }
+  back:
+    demand: most_demand
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: lemonade }
+    cleanup: [ 1, 0, -1, 0, -2 ]
+    develop: { type: garden, house: 10 }
+    lobby: { type: road }
+
+# ── Card 15 ───────────────────────────────────────────────────────────────
+- number: 15
+  map_tiles: { expand_chain: 3, market: 6, coffee_shop: 1, develop_lobby: 7 }
+  front:
+    market: burger
+    actions:
+    - { type: recruit_marketeer, target: Marketing Trainee, star: expand_chain }
+    - { type: move_waitress, target: "+1" }
+    - { type: recruit_employee, target: Noodle Chef, module: noodle, fallback: burger, star: lobby }
+    - { type: recruit_employee, target: Regional Manager }
+
+  back:
+    demand: most_demand
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: beer }
+    cleanup: [ 1, 3, 0, 0, -3 ]
+    develop: { type: garden, house: 12 }
+    lobby: { type: road }
+
+# ── Card 16 ───────────────────────────────────────────────────────────────
+- number: 16
+  map_tiles: { expand_chain: 6, market: 7, coffee_shop: 9, develop_lobby: 8 }
+  front:
+    market: beer
+    actions:
+    - { type: move_distance, target: "-1", star: lobby }
+    - { type: claim_milestone, target: first_cart_operator, star: develop }
+    - { type: recruit_marketeer, target: Brand Manager }
+    - { type: recruit_employee, target: Regional Manager }
+  back:
+    demand: specific
+    foods: [ burger ]
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: softdrink }
+    cleanup: [ 1, 0, 0, 1, 3 ]
+    develop: { type: garden, house: 13 }
+    lobby: { type: road }
+
+# ── Card 17 ───────────────────────────────────────────────────────────────
+- number: 17
+  map_tiles: { expand_chain: 9, market: 8, coffee_shop: 4, develop_lobby: 3 }
+  front:
+    market: lemonade
+    actions:
+    - { type: recruit_employee, target: Night Shift Manager, module: night_shift, fallback: pizza }
+    - { type: move_distance, target: "-1" }
+    - { type: recruit_employee, target: Burger Chef, star: develop }
+    - { type: recruit_marketeer, target: Brand Director, star: coffee_shop }
+
+  back:
+    demand: all_demand
+    multiply: 1
+    food_item: { item: noodle, module: noodle, multiply: 2 }
+    cleanup: [ 1, 3, 0, 0, 2 ]
+    develop: { type: garden, house: 15 }
+    lobby: { type: road }
+
+# ── Card 18 ───────────────────────────────────────────────────────────────
+- number: 18
+  map_tiles: { expand_chain: 1, market: 9, coffee_shop: 6, develop_lobby: 8 }
+  front:
+    market: burger
+    actions:
+    - { type: claim_milestone, target: first_errand_boy, star: develop }
+    - { type: move_waitress, target: "+1", star: coffee_shop }
+    - { type: recruit_employee, target: Lead Barista, module: coffee, fallback: [ lemonade, beer, softdrink ] }
+    - { type: recruit_marketeer, target: Brand Director }
+
+  back:
+    demand: all_demand
+    multiply: 1
+    food_item: { item: sushi, module: sushi, multiply: 2 }
+    cleanup: [ 1, 0, 0, 1, -2 ]
+    develop: { type: garden, house: 16 }
+    lobby: { type: road }
+
+# ── Card 19 ───────────────────────────────────────────────────────────────
+- number: 19
+  map_tiles: { expand_chain: 7, market: 1, coffee_shop: 3, develop_lobby: 5 }
+  front:
+    market: pizza
+    actions:
+    - { type: move_distance, target: "-1" }
+    - { type: recruit_marketeer, target: Mass Marketeer, module: mass_marketeer, fallback: beer, star: expand_chain }
+    - { type: recruit_employee, target: Pizza Chef, star: develop }
+    - { type: recruit_marketeer, target: Brand Director }
+  back:
+    demand: specific
+    foods: [ beer ]
+    multiply: 1
+    food_item: { item: noodle, module: noodle, fallback: burger }
+    cleanup: [ 1, 0, 0, 1, 1 ]
+    develop: { type: garden, house: 18 }
+    lobby: { type: road }
+
+# ── Card 20 ───────────────────────────────────────────────────────────────
+- number: 20
+  map_tiles: { expand_chain: 8, market: 2, coffee_shop: 7, develop_lobby: 6 }
+  front:
+    market: softdrink
+    actions:
+
+    - { type: recruit_marketeer, target: Marketing Trainee }
+    - { type: recruit_employee, target: Luxuries Manager }
+    - { type: recruit_employee, target: Noodle Chef, module: noodle, fallback: burger, star: lobby }
+    - { type: claim_milestone, target: first_to_pay_20_salary, star: develop }
+  back:
+    demand: specific
+    foods: [ softdrink ]
+    multiply: 1
+    food_item: { item: coffee, module: coffee, fallback: lemonade }
+    cleanup: [ 1, 0, -1, 0, -3 ]
+    develop: { type: garden, house: 21 }
+    lobby: { type: road }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# WARM COMPETITION DECK  (12 cards)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+warm_cards:
+
+# ── Set 1: EXPAND CHAIN (cards 1-4) ───────────────────────────────────────
+- { number: 1, effect: expand_chain, food_adj: [ { item: burger, amount: 2 }, { item: pizza, amount: 2 } ], map_tile: 1 }
+- { number: 2, effect: expand_chain, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 2 }
+- { number: 3, effect: expand_chain, food_adj: [ { item: sushi, amount: 2 }, { item: noodle, amount: 2 } ], map_tile: 3 }
+- { number: 4, effect: expand_chain, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 4 }
+
+# ── Set 2: COFFEE SHOP / EXPAND CHAIN (cards 5-8) ────────────────────────
+- { number: 5, effect: coffee_shop_or_expand, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 5, boost: true }
+- { number: 6, effect: coffee_shop_or_expand, food_adj: [ { item: burger, amount: 2 }, { item: lemonade, amount: 2 } ], map_tile: 6, boost: true }
+- { number: 7, effect: coffee_shop_or_expand, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 7, boost: true }
+- { number: 8, effect: coffee_shop_or_expand, food_adj: [ { item: pizza, amount: 2 }, { item: beer, amount: 2 } ], map_tile: 8, boost: true }
+
+# ── Set 3: +50% CASH EARNED THIS TURN (cards 9-12) ───────────────────────
+- { number: 9, effect: bonus_cash, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 1 }
+- { number: 10, effect: bonus_cash, food_adj: [ { item: sushi, amount: 2 }, { item: kimchi, amount: 2 } ], map_tile: 2 }
+- { number: 11, effect: bonus_cash, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 3 }
+- { number: 12, effect: bonus_cash, food_adj: [ { item: noodle, amount: 2 }, { item: coffee, amount: 2 } ], map_tile: 4 }
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# COOL COMPETITION DECK  (12 cards)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+cool_cards:
+
+# ── Set 1: NO DRIVE-INS THIS TURN (cards 1-4) ────────────────────────────
+- { number: 1, effect: no_driveins, loss_items: [ burger ], map_tile: 1 }
+- { number: 2, effect: no_driveins, loss_items: [ pizza ], map_tile: 2 }
+- { number: 3, effect: no_driveins, loss_items: [ sushi ], map_tile: 3 }
+- { number: 4, effect: no_driveins, loss_items: [ noodle ], map_tile: 4 }
+
+# ── Set 2: FIRE ALL EMPLOYEES (cards 5-8) ─────────────────────────────────
+- { number: 5, effect: fire_employees, loss_items: [ beer ], map_tile: 5 }
+- { number: 6, effect: fire_employees, loss_items: [ lemonade ], map_tile: 6 }
+- { number: 7, effect: fire_employees, loss_items: [ coffee ], map_tile: 7 }
+- { number: 8, effect: fire_employees, loss_items: [ kimchi ], map_tile: 8 }
+
+# ── Set 3: PAY $10 PER EMPLOYEE (cards 9-12) ─────────────────────────────
+- { number: 9, effect: pay_per_employee, loss_items: [ burger, beer ], map_tile: 1 }
+- { number: 10, effect: pay_per_employee, loss_items: [ pizza, lemonade ], map_tile: 2 }
+- { number: 11, effect: pay_per_employee, loss_items: [ sushi, coffee ], map_tile: 3 }
+- { number: 12, effect: pay_per_employee, loss_items: [ noodle, kimchi ], map_tile: 4 }

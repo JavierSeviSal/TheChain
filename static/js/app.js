@@ -82,6 +82,22 @@ function bindEvents() {
     $("#btn-start-game").onclick = startNewGame;
     $("#btn-cancel-setup").onclick = () => hideOverlay(newgameOverlay);
 
+    // Enable/Disable all modules
+    const btnEnableAll = document.getElementById("btn-enable-all");
+    const btnDisableAll = document.getElementById("btn-disable-all");
+    if (btnEnableAll) {
+        btnEnableAll.addEventListener("click", (e) => {
+            e.stopPropagation();
+            document.querySelectorAll("#modules-grid input[type='checkbox']").forEach(cb => { cb.checked = true; });
+        });
+    }
+    if (btnDisableAll) {
+        btnDisableAll.addEventListener("click", (e) => {
+            e.stopPropagation();
+            document.querySelectorAll("#modules-grid input[type='checkbox']").forEach(cb => { cb.checked = false; });
+        });
+    }
+
     // Load
     $("#btn-close-load").onclick = () => hideOverlay(loadOverlay);
 
@@ -123,8 +139,16 @@ async function startNewGame() {
         kimchi: $("#mod-kimchi").checked,
         noodle: $("#mod-noodle").checked,
         sushi: $("#mod-sushi").checked,
-        beer: $("#mod-beer").checked,
-        lemonade: $("#mod-lemonade").checked,
+        gourmet: $("#mod-gourmet").checked,
+        mass_marketeer: $("#mod-mass-marketeer").checked,
+        rural_marketeer: $("#mod-rural-marketeer").checked,
+        night_shift: $("#mod-night-shift").checked,
+        ketchup: $("#mod-ketchup").checked,
+        fry_chefs: $("#mod-fry-chefs").checked,
+        movie_stars: $("#mod-movie-stars").checked,
+        reserve_prices: $("#mod-reserve-prices").checked,
+        lobbyists: $("#mod-lobbyists").checked,
+        new_districts: $("#mod-new-districts").checked,
         milestones: $("#mod-milestones").checked,
     };
     const optional_rules = {
@@ -398,12 +422,14 @@ function updateInventory() {
     const grid = $("#inv-grid");
     grid.innerHTML = "";
 
-    const items = ["burger", "pizza", "sushi", "noodle", "coffee", "kimchi", "beer", "lemonade"];
+    const items = ["burger", "pizza", "beer", "lemonade", "softdrink", "sushi", "noodle", "coffee", "kimchi"];
     const modules = gameState.modules || {};
+    // Core items (burger, pizza, beer, lemonade, softdrink) are always shown
+    const coreItems = new Set(["burger", "pizza", "beer", "lemonade", "softdrink"]);
 
     items.forEach(item => {
-        // Skip items whose module is disabled
-        if (modules[item] === false && item !== "burger" && item !== "pizza") return;
+        // Skip expansion items whose module is disabled
+        if (!coreItems.has(item) && modules[item] === false) return;
 
         const inv = gameState.inventory[item] || { top: 0, bottom: 0, total: 0 };
         const div = document.createElement("div");

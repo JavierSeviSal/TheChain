@@ -42,14 +42,26 @@
             <h2 data-i18n="new_game_setup">New Game Setup</h2>
 
             <h3 data-i18n="modules">Expansion Modules</h3>
-            <div class="toggle-grid">
-                <label><input type="checkbox" id="mod-coffee" checked> ☕ Coffee</label>
-                <label><input type="checkbox" id="mod-kimchi" checked> 🥬 Kimchi</label>
-                <label><input type="checkbox" id="mod-noodle" checked> 🍜 Noodle</label>
-                <label><input type="checkbox" id="mod-sushi" checked> 🍣 Sushi</label>
-                <label><input type="checkbox" id="mod-beer" checked> 🍺 Beer</label>
-                <label><input type="checkbox" id="mod-lemonade" checked> 🍋 Lemonade</label>
-                <label><input type="checkbox" id="mod-milestones" checked> 🏆 Milestones</label>
+            <div class="module-actions">
+                <button type="button" id="btn-enable-all" class="small-btn" data-i18n="enable_all">Enable All</button>
+                <button type="button" id="btn-disable-all" class="small-btn" data-i18n="disable_all">Disable All</button>
+            </div>
+            <div class="toggle-grid" id="modules-grid">
+                <label><input type="checkbox" id="mod-coffee"> ☕ <span data-i18n="mod_coffee">Coffee</span></label>
+                <label><input type="checkbox" id="mod-kimchi"> 🥬 <span data-i18n="mod_kimchi">Kimchi</span></label>
+                <label><input type="checkbox" id="mod-noodle"> 🍜 <span data-i18n="mod_noodle">Noodle</span></label>
+                <label><input type="checkbox" id="mod-sushi"> 🍣 <span data-i18n="mod_sushi">Sushi</span></label>
+                <label><input type="checkbox" id="mod-gourmet"> 🍽️ <span data-i18n="mod_gourmet">Gourmet Food Critic</span></label>
+                <label><input type="checkbox" id="mod-mass-marketeer"> 📢 <span data-i18n="mod_mass_marketeer">Mass Marketeer</span></label>
+                <label><input type="checkbox" id="mod-rural-marketeer"> 🌾 <span data-i18n="mod_rural_marketeer">Rural Marketeer</span></label>
+                <label><input type="checkbox" id="mod-night-shift"> 🌙 <span data-i18n="mod_night_shift">Night Shift Manager</span></label>
+                <label><input type="checkbox" id="mod-ketchup"> 🟥 <span data-i18n="mod_ketchup">Ketchup</span></label>
+                <label><input type="checkbox" id="mod-fry-chefs"> 🍟 <span data-i18n="mod_fry_chefs">Fry Chefs</span></label>
+                <label><input type="checkbox" id="mod-movie-stars"> 🎬 <span data-i18n="mod_movie_stars">Movie Stars</span></label>
+                <label><input type="checkbox" id="mod-reserve-prices"> 💰 <span data-i18n="mod_reserve_prices">Reserve Prices</span></label>
+                <label><input type="checkbox" id="mod-lobbyists"> 🏛️ <span data-i18n="mod_lobbyists">Lobbyists</span></label>
+                <label><input type="checkbox" id="mod-new-districts"> 🏘️ <span data-i18n="mod_new_districts">New Districts</span></label>
+                <label><input type="checkbox" id="mod-milestones"> 🏆 <span data-i18n="mod_milestones">Milestones</span></label>
             </div>
 
             <h3 data-i18n="difficulty">Difficulty Options</h3>
@@ -232,7 +244,7 @@
         </section>
     </main>
 
-    <script src="/static/js/i18n.js"></script>
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/i18n.js?v=2"></script>
+    <script src="/static/js/app.js?v=2"></script>
 </body>
 </html>

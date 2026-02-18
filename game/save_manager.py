@@ -150,6 +150,7 @@ def _serialize_full_state(state: GameState) -> dict:
         "bank_breaks": state.bank_breaks,
         "action_log": state.action_log[-100:],
         "is_first_turn": state.is_first_turn,
+        "pending_stars": state.pending_stars,
         "chain_cash_this_turn": state.chain_cash_this_turn,
         "bonus_cash_multiplier": state.bonus_cash_multiplier,
         "no_driveins_this_turn": state.no_driveins_this_turn,
@@ -173,7 +174,11 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.phase = GamePhase(data.get("phase", "setup"))
     state.mode = GameMode(data.get("mode", "full"))
     state.language = data.get("language", "en")
-    state.modules = data.get("modules", state.modules)
+    saved_modules = data.get("modules", state.modules)
+    # Strip legacy module keys that are now always-on core items
+    for legacy_key in ("beer", "lemonade", "softdrink"):
+        saved_modules.pop(legacy_key, None)
+    state.modules = saved_modules
     state.optional_rules = data.get("optional_rules", state.optional_rules)
 
     # Rebuild decks from card references
@@ -231,6 +236,7 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.bank_breaks = data.get("bank_breaks", 0)
     state.action_log = data.get("action_log", [])
     state.is_first_turn = data.get("is_first_turn", False)
+    state.pending_stars = data.get("pending_stars", [])
     state.chain_cash_this_turn = data.get("chain_cash_this_turn", 0)
     state.bonus_cash_multiplier = data.get("bonus_cash_multiplier", 1.0)
     state.no_driveins_this_turn = data.get("no_driveins_this_turn", False)

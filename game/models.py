@@ -39,14 +39,12 @@ class GamePhase(Enum):
     SETUP = "setup"
     RESTRUCTURING = "restructuring"
     RECRUIT_TRAIN = "recruit_train"
-    ORDER_OF_BUSINESS = "order_of_business"
     GET_FOOD = "get_food"
     MARKETING = "marketing"
     DEVELOP = "develop"
     LOBBY = "lobby"
     EXPAND_CHAIN = "expand_chain"
     DINNERTIME = "dinnertime"
-    PAYDAY = "payday"
     CLEANUP = "cleanup"
     GAME_OVER = "game_over"
     # Sub-phases for player input
@@ -63,18 +61,27 @@ class DemandType(Enum):
     ALL = "all_demand"
 
 
+# Core items are always available; module items require expansion toggle
+CORE_FOOD_ITEMS = {"burger", "pizza", "beer", "lemonade", "softdrink"}
+
+
 class FoodItem(Enum):
     BURGER = "burger"
     PIZZA = "pizza"
+    BEER = "beer"
+    LEMONADE = "lemonade"
+    SOFTDRINK = "softdrink"
     SUSHI = "sushi"
     NOODLE = "noodle"
     COFFEE = "coffee"
     KIMCHI = "kimchi"
-    BEER = "beer"
-    LEMONADE = "lemonade"
 
     def label(self) -> str:
         return self.name.capitalize()
+
+    @property
+    def is_core(self) -> bool:
+        return self.value in CORE_FOOD_ITEMS
 
 
 # ─── Card model ──────────────────────────────────────────────────────────────
@@ -88,10 +95,13 @@ class ActionSlot:
     action_type: str  # "recruit_marketeer", "recruit_employee", "move_distance",
     # "move_waitress", "claim_milestone", "get_food"
     target: str  # e.g., "Zeppelin Pilot", "Burger Chef", "-3", "+1", milestone name
-    fallback_food: Optional[str] = (
-        None  # Food item if action can't be taken (module not in use)
+    fallback_food: Optional[str | list] = (
+        None  # Food item(s) if action can't be taken (module not in use)
     )
     requires_module: Optional[str] = None  # Module that must be active for this action
+    star: Optional[str] = (
+        None  # Star type on this slot: "expand_chain", "coffee_shop", "develop", "lobby", "garden"
+    )
 
 
 @dataclass
@@ -99,10 +109,7 @@ class CardFront:
     """RECRUIT & TRAIN side of an Action Deck card."""
 
     actions: list[ActionSlot] = field(default_factory=list)  # 4 action slots
-    stars: list[str] = field(
-        default_factory=list
-    )  # "coffee_shop", "expand_chain", "develop", "lobby"
-    map_tile: int = 1  # Map tile indicator (1-9)
+    market_item: Optional[str] = None  # Food/drink shown on lower-left corner
 
 
 @dataclass
@@ -122,11 +129,15 @@ class CardBack:
         default_factory=list
     )  # Specific food items or empty for demand-based
     multiplier: int = 1  # How many units to add (×1, ×2, etc.)
-    get_food_amount: int = 0  # From green box next to R&T track
     cleanup_actions: list[CleanupAction] = field(default_factory=list)
-    develop_target: Optional[str] = None  # "house_25", "garden_2", etc.
-    lobby_target: Optional[str] = None  # "park", "road", "park_4", etc.
-    map_tile: int = 1
+    food_item: Optional[str] = None        # Right-box food/drink item
+    food_item_module: Optional[str] = None  # Required module for food_item
+    food_item_fallback: Optional[str] = None  # Fallback if module inactive
+    food_item_multiply: int = 1             # Right-box multiplier (1 or 2)
+    develop_type: Optional[str] = None   # "house" or "garden"
+    develop_house: Optional[str] = None  # House number (e.g. "19", "2")
+    lobby_type: Optional[str] = None     # "road" or "park"
+    lobby_house: Optional[str] = None    # House number for park (e.g. "4", "pi")
 
 
 @dataclass
@@ -155,6 +166,9 @@ class Card:
     front: Optional[CardFront] = None
     back: Optional[CardBack] = None
 
+    # Map tiles for action deck cards (expand_chain, market, coffee_shop, develop_lobby)
+    map_tiles: dict = field(default_factory=dict)
+
     # Competition cards have a single effect
     competition_effect: Optional[CompetitionEffect] = None
 
@@ -173,6 +187,7 @@ class Card:
             "card_number": self.card_number,
             "image_front": self.image_front,
             "image_back": self.image_back,
+            "map_tiles": self.map_tiles,
         }
         if self.front:
             d["front"] = {
@@ -183,11 +198,11 @@ class Card:
                         "target": a.target,
                         "fallback_food": a.fallback_food,
                         "requires_module": a.requires_module,
+                        "star": a.star,
                     }
                     for a in self.front.actions
                 ],
-                "stars": self.front.stars,
-                "map_tile": self.front.map_tile,
+                "market_item": self.front.market_item,
             }
         if self.back:
             d["back"] = {
@@ -198,9 +213,14 @@ class Card:
                     {"type": c.action_type, "value": c.value}
                     for c in self.back.cleanup_actions
                 ],
-                "develop_target": self.back.develop_target,
-                "lobby_target": self.back.lobby_target,
-                "map_tile": self.back.map_tile,
+                "develop_type": self.back.develop_type,
+                "develop_house": self.back.develop_house,
+                "lobby_type": self.back.lobby_type,
+                "lobby_house": self.back.lobby_house,
+                "food_item": self.back.food_item,
+                "food_item_module": self.back.food_item_module,
+                "food_item_fallback": self.back.food_item_fallback,
+                "food_item_multiply": self.back.food_item_multiply,
             }
         if self.competition_effect:
             d["competition_effect"] = {
@@ -485,9 +505,6 @@ class MarketeerSlot:
 
 MILESTONES = [
     "first_to_lower_prices",
-    "first_burger",
-    "first_pizza",
-    "first_drink",
     "first_to_train",
     "first_to_hire_3",
     "first_to_have_waitress",
@@ -513,16 +530,24 @@ class GameState:
     mode: GameMode = GameMode.FULL
     language: str = "en"
 
-    # Active modules/expansions
+    # Active modules/expansions (beer, lemonade, softdrink are core — not toggleable)
     modules: dict = field(
         default_factory=lambda: {
-            "coffee": True,
-            "kimchi": True,
-            "noodle": True,
-            "sushi": True,
-            "beer": True,
-            "lemonade": True,
-            "milestones": True,
+            "coffee": False,
+            "kimchi": False,
+            "noodle": False,
+            "sushi": False,
+            "gourmet": False,
+            "mass_marketeer": False,
+            "rural_marketeer": False,
+            "night_shift": False,
+            "ketchup": False,
+            "fry_chefs": False,
+            "movie_stars": False,
+            "reserve_prices": False,
+            "lobbyists": False,
+            "new_districts": False,
+            "milestones": False,
         }
     )
 
@@ -583,6 +608,9 @@ class GameState:
     # First turn flag
     is_first_turn: bool = True
 
+    # Pending stars from the current front card (develop, lobby, expand_chain, coffee_shop)
+    pending_stars: list = field(default_factory=list)
+
     # Chain's cash earned this turn (for competition adjustment)
     chain_cash_this_turn: int = 0
 
@@ -637,6 +665,7 @@ class GameState:
             "action_log": self.action_log[-50:],  # Last 50 entries
             "pending_input": self.pending_input,
             "is_first_turn": self.is_first_turn,
+            "pending_stars": self.pending_stars,
             "chain_cash_this_turn": self.chain_cash_this_turn,
             "bonus_cash_multiplier": self.bonus_cash_multiplier,
             "no_driveins_this_turn": self.no_driveins_this_turn,
