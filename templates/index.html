@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>The Chain — FCM Solo Automa</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=27">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 </head>
 <body>
@@ -128,13 +128,18 @@
             <div class="cards-row">
                 <div class="card-slot" id="back-card-slot">
                     <div class="card-label" data-i18n="food_cleanup">Food & Cleanup</div>
-                    <img id="back-card-img" class="card-img" src="" alt="Back card"
+                    <img id="back-card-img" class="card-img" src="/static/cards/placeholder.png" alt="Back card"
                          data-side="back" loading="lazy">
                 </div>
                 <div class="card-slot" id="front-card-slot">
                     <div class="card-label" data-i18n="recruit_train">Recruit & Train</div>
-                    <img id="front-card-img" class="card-img" src="" alt="Front card"
+                    <img id="front-card-img" class="card-img" src="/static/cards/placeholder.png" alt="Front card"
                          data-side="front" loading="lazy">
+                </div>
+                <div class="card-slot comp-card-slot hidden" id="comp-card-slot">
+                    <div class="card-label" id="comp-card-label">Competition</div>
+                    <img id="comp-card-img" class="card-img" src="/static/cards/placeholder.png" alt="Competition card"
+                         loading="lazy">
                 </div>
             </div>
 
@@ -154,10 +159,18 @@
                 <div class="tracks-grid">
                     <div class="track" id="track-rt">
                         <span class="track-name" data-i18n="recruit_train_short">R&T</span>
-                        <div class="track-bar">
-                            <div class="track-markers" id="rt-markers"></div>
+                        <div class="track-bars-group">
+                            <div class="track-bar">
+                                <div class="track-markers" id="rt-markers"></div>
+                            </div>
+                            <div class="track-bar track-sub-bar">
+                                <div class="track-markers sub-markers" id="rt-food-markers"></div>
+                            </div>
                         </div>
-                        <span class="track-value" id="rt-value">1</span>
+                        <div class="track-value-group" id="rt-value-group">
+                            <span class="tv-slots" id="rt-slots-value">1</span>
+                            <span class="tv-food" id="rt-food-value">×2</span>
+                        </div>
                         <span class="track-info" id="rt-info"></span>
                     </div>
                     <div class="track" id="track-pd">
@@ -212,6 +225,10 @@
                     <div id="restaurant-list" class="tag-list"></div>
                 </div>
                 <div class="info-section">
+                    <h4>💰 <span data-i18n="chain_cash">Chain Cash</span></h4>
+                    <div id="chain-cash-info" class="tag-list"></div>
+                </div>
+                <div class="info-section">
                     <h4>📊 <span data-i18n="deck_info">Deck</span></h4>
                     <div id="deck-info" class="deck-info"></div>
                 </div>
@@ -228,7 +245,7 @@
                 <h3 data-i18n="quick_controls">Quick Controls</h3>
                 <button id="btn-quick-draw" class="primary-btn" data-i18n="draw_card">Draw Card</button>
                 <div class="quick-tracks">
-                    <label>R&T: <input type="number" id="qtrack-rt" min="1" max="7" value="1" class="track-input"></label>
+                    <label>R&T: <input type="number" id="qtrack-rt" min="1" max="4" value="1" class="track-input"></label>
                     <label>P+D: <input type="number" id="qtrack-pd" min="6" max="10" value="10" class="track-input"></label>
                     <label>Wait: <input type="number" id="qtrack-wait" min="0" max="4" value="0" class="track-input"></label>
                     <label>Comp: <select id="qtrack-comp" class="track-input">
@@ -244,7 +261,7 @@
         </section>
     </main>
 
-    <script src="/static/js/i18n.js?v=2"></script>
-    <script src="/static/js/app.js?v=2"></script>
+    <script src="/static/js/i18n.js?v=23"></script>
+    <script src="/static/js/app.js?v=25"></script>
 </body>
 </html>

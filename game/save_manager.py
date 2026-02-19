@@ -127,6 +127,7 @@ def _serialize_full_state(state: GameState) -> dict:
         "modules": state.modules,
         "optional_rules": state.optional_rules,
         "action_deck_cards": [_serialize_card(c) for c in state.action_deck.cards],
+        "discard_pile_cards": [_serialize_card(c) for c in state.discard_pile.cards],
         "warm_deck_cards": [_serialize_card(c) for c in state.warm_deck.cards],
         "cool_deck_cards": [_serialize_card(c) for c in state.cool_deck.cards],
         "tracks": {
@@ -135,26 +136,49 @@ def _serialize_full_state(state: GameState) -> dict:
             "waitresses": state.tracks.waitresses.position,
             "competition": state.tracks.competition.value,
         },
-        "inventory": {k: v.copy() for k, v in state.inventory.items.items()},
+        "inventory": {k: v for k, v in state.inventory.items.items()},
         "marketeer_slots": [
-            {"slot": s.slot_number, "marketeer": s.marketeer, "is_busy": s.is_busy}
+            {
+                "slot": s.slot_number,
+                "marketeer": s.marketeer,
+                "is_busy": s.is_busy,
+                "market_item": s.market_item,
+                "campaign_number": s.campaign_number,
+                "campaigns_left": s.campaigns_left,
+                "placed_turn": s.placed_turn,
+            }
             for s in state.marketeer_slots
         ],
         "mass_marketeer": state.mass_marketeer,
         "employee_pile": state.employee_pile.copy(),
         "milestones_claimed": state.milestones_claimed.copy(),
+        "milestones_unavailable": state.milestones_unavailable.copy(),
+        "pending_milestone_checks": state.pending_milestone_checks.copy(),
+        "phase_before_milestone": state.phase_before_milestone,
+        "pending_competition_actions": [
+            a.copy() for a in state.pending_competition_actions
+        ],
+        "phase_after_competition": state.phase_after_competition,
         "restaurants": [r.copy() for r in state.restaurants],
         "max_restaurants": state.max_restaurants,
         "current_front_card": state.current_front_card,
         "current_back_card": state.current_back_card,
+        "current_competition_card": state.current_competition_card,
         "bank_breaks": state.bank_breaks,
         "action_log": state.action_log[-100:],
         "is_first_turn": state.is_first_turn,
         "pending_stars": state.pending_stars,
         "chain_cash_this_turn": state.chain_cash_this_turn,
+        "chain_total_cash": state.chain_total_cash,
         "bonus_cash_multiplier": state.bonus_cash_multiplier,
         "no_driveins_this_turn": state.no_driveins_this_turn,
+        "chain_movie_star": state.chain_movie_star,
+        "turn_order": state.turn_order,
+        "display_phase": state.display_phase,
         "pending_input": state.pending_input,
+        "cards_drawn_this_cycle": state.cards_drawn_this_cycle,
+        "deck_cycles": state.deck_cycles,
+        "total_cards_drawn": state.total_cards_drawn,
     }
 
 
@@ -171,7 +195,11 @@ def _deserialize_full_state(data: dict) -> GameState:
     """Rebuild full GameState from serialized data."""
     state = GameState()
     state.turn_number = data.get("turn_number", 0)
-    state.phase = GamePhase(data.get("phase", "setup"))
+    # Handle legacy phase name migration
+    phase_value = data.get("phase", "setup")
+    if phase_value == "marketing":
+        phase_value = "initiate_marketing"  # Renamed phase
+    state.phase = GamePhase(phase_value)
     state.mode = GameMode(data.get("mode", "full"))
     state.language = data.get("language", "en")
     saved_modules = data.get("modules", state.modules)
@@ -193,6 +221,12 @@ def _deserialize_full_state(data: dict) -> GameState:
         key = (cd["card_type"], cd["card_number"])
         if key in all_cards:
             state.action_deck.cards.append(all_cards[key])
+
+    state.discard_pile = Deck(name="Discard Pile")
+    for cd in data.get("discard_pile_cards", []):
+        key = (cd["card_type"], cd["card_number"])
+        if key in all_cards:
+            state.discard_pile.cards.append(all_cards[key])
 
     state.warm_deck = Deck(name="Warm Competition")
     for cd in data.get("warm_deck_cards", []):
@@ -221,7 +255,13 @@ def _deserialize_full_state(data: dict) -> GameState:
     inv_data = data.get("inventory", {})
     for item, vals in inv_data.items():
         if item in state.inventory.items:
-            state.inventory.items[item] = vals.copy()
+            if isinstance(vals, dict):
+                # Migration: old format had {top, bottom}, new is single int
+                state.inventory.items[item] = vals.get(
+                    "count", vals.get("top", 0) + vals.get("bottom", 0)
+                )
+            else:
+                state.inventory.items[item] = vals
 
     # Restore marketeers
     slots_data = data.get("marketeer_slots", [])
@@ -229,21 +269,38 @@ def _deserialize_full_state(data: dict) -> GameState:
         if i < len(state.marketeer_slots):
             state.marketeer_slots[i].marketeer = sd.get("marketeer")
             state.marketeer_slots[i].is_busy = sd.get("is_busy", False)
+            state.marketeer_slots[i].market_item = sd.get("market_item")
+            state.marketeer_slots[i].campaign_number = sd.get("campaign_number")
+            state.marketeer_slots[i].campaigns_left = sd.get("campaigns_left")
+            state.marketeer_slots[i].placed_turn = sd.get("placed_turn")
 
     state.mass_marketeer = data.get("mass_marketeer", False)
     state.employee_pile = data.get("employee_pile", [])
     state.milestones_claimed = data.get("milestones_claimed", [])
+    state.milestones_unavailable = data.get("milestones_unavailable", [])
+    state.pending_milestone_checks = data.get("pending_milestone_checks", [])
+    state.phase_before_milestone = data.get("phase_before_milestone")
+    state.pending_competition_actions = data.get("pending_competition_actions", [])
+    state.phase_after_competition = data.get("phase_after_competition")
     state.restaurants = data.get("restaurants", [])
     state.max_restaurants = data.get("max_restaurants", 3)
     state.current_front_card = data.get("current_front_card")
     state.current_back_card = data.get("current_back_card")
+    state.current_competition_card = data.get("current_competition_card")
     state.bank_breaks = data.get("bank_breaks", 0)
     state.action_log = data.get("action_log", [])
     state.is_first_turn = data.get("is_first_turn", False)
     state.pending_stars = data.get("pending_stars", [])
     state.chain_cash_this_turn = data.get("chain_cash_this_turn", 0)
+    state.chain_total_cash = data.get("chain_total_cash", 0)
     state.bonus_cash_multiplier = data.get("bonus_cash_multiplier", 1.0)
     state.no_driveins_this_turn = data.get("no_driveins_this_turn", False)
+    state.chain_movie_star = data.get("chain_movie_star", None)
+    state.turn_order = data.get("turn_order", None)
+    state.display_phase = data.get("display_phase", None)
     state.pending_input = data.get("pending_input")
+    state.cards_drawn_this_cycle = data.get("cards_drawn_this_cycle", 0)
+    state.deck_cycles = data.get("deck_cycles", 0)
+    state.total_cards_drawn = data.get("total_cards_drawn", 0)
 
     return state

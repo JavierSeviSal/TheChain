@@ -47,22 +47,27 @@ body {
     top: 0;
     z-index: 100;
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 6px 8px;
     background: var(--bg-card);
     border-bottom: 2px solid var(--accent);
     box-shadow: var(--shadow);
+    gap: 4px;
 }
 
-.bar-left { display: flex; align-items: center; gap: 8px; }
-.bar-right { display: flex; align-items: center; gap: 4px; }
+.bar-left { display: flex; align-items: center; gap: 6px; min-width: 0; flex-shrink: 1; overflow: hidden; }
+.bar-right { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
 
 .logo {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     color: var(--accent);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .badge {
@@ -340,6 +345,14 @@ body {
 
 .card-img:hover { transform: scale(1.02); }
 
+/* Competition card slot */
+.comp-card-slot {
+    max-width: 33%;
+    transition: opacity 0.3s;
+}
+.comp-card-slot .card-label.warm-label { background: rgba(232, 93, 58, 0.5); color: #fff; }
+.comp-card-slot .card-label.cool-label { background: rgba(58, 142, 232, 0.5); color: #fff; }
+
 /* Card zoom overlay */
 #card-overlay {
     cursor: pointer;
@@ -450,6 +463,35 @@ body {
     overflow: hidden;
 }
 
+/* Wrapper for stacked bars (e.g. R&T + food multiplier) */
+.track-bars-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 2px;
+}
+.track-bars-group .track-bar {
+    flex: none;
+}
+
+/* Sub-bar (food multiplier) */
+.track-sub-bar {
+    height: 22px;
+    border-radius: 11px;
+    opacity: 0.85;
+}
+.track-sub-bar .marker {
+    font-size: 0.55rem;
+    height: 16px;
+    border-radius: 3px;
+}
+.track-sub-bar .marker.active,
+#rt-food-markers .marker.active {
+    background: #84A15B;
+    box-shadow: 0 0 6px #84A15B;
+    color: #fff;
+}
+
 .track-markers {
     display: flex;
     height: 100%;
@@ -478,6 +520,13 @@ body {
     box-shadow: 0 0 8px var(--accent);
 }
 
+/* R&T track: grey active markers */
+#rt-markers .marker.active {
+    background: #B8B0AC;
+    box-shadow: 0 0 8px #B8B0AC;
+    color: #222;
+}
+
 .track-markers .shuffle-divider {
     width: 2px;
     height: 24px;
@@ -498,6 +547,26 @@ body {
     color: var(--accent2);
     min-width: 28px;
     text-align: center;
+}
+
+/* Stacked double value for R&T */
+.track-value-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 28px;
+    gap: 0;
+    line-height: 1.1;
+}
+.track-value-group .tv-slots {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #B8B0AC;
+}
+.track-value-group .tv-food {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #84A15B;
 }
 
 .track-info {
@@ -604,6 +673,11 @@ body {
     padding: 6px 8px;
     border-radius: 6px;
     font-size: 0.8rem;
+    flex-wrap: wrap;
+}
+
+.slot-busy-item {
+    border-left: 3px solid var(--accent);
 }
 
 .slot-num {
@@ -617,10 +691,24 @@ body {
     justify-content: center;
     font-size: 0.7rem;
     font-weight: 700;
+    flex-shrink: 0;
 }
 
-.slot-name { flex: 1; }
+.slot-name { flex: 1; min-width: 0; }
+.empty-slot { color: var(--text-muted); font-style: italic; }
 .slot-busy { color: var(--accent); font-size: 0.7rem; }
+.slot-status { color: #4caf50; font-size: 0.7rem; font-weight: 600; }
+.slot-campaign {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.slot-duration {
+    font-size: 0.7rem;
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+}
 
 .tag-list {
     display: flex;

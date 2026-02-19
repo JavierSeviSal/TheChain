@@ -12,7 +12,7 @@ const API = {
         return res.json();
     },
     async get(url) {
-        const res = await fetch(url);
+        const res = await fetch(url, { cache: "no-store" });
         return res.json();
     },
     async del(url) {
@@ -110,6 +110,14 @@ function bindEvents() {
             }
         };
     });
+    // Competition card zoom
+    $("#comp-card-img").onclick = () => {
+        const img = $("#comp-card-img");
+        if (img.src && !img.src.endsWith("placeholder.png")) {
+            $("#card-zoom-img").src = img.src;
+            showOverlay(cardOverlay);
+        }
+    };
     cardOverlay.onclick = (e) => {
         if (e.target !== $("#card-zoom-img")) hideOverlay(cardOverlay);
     };
@@ -184,7 +192,8 @@ async function advancePhase() {
     btnAdvance.disabled = false;
 
     await refreshState();
-    setStatus(result.message);
+    // Show original phase message if milestones intercepted the result
+    setStatus(result.phase_message || result.message);
 
     // Handle waiting for input
     if (result.status === "waiting" && result.input_needed) {
@@ -199,9 +208,8 @@ async function advancePhase() {
         updateCardImage("front", result.current_front_card);
     }
 
-    // Game over
+    // Game over — refreshState() already handles button text via refreshUI()
     if (result.status === "game_over") {
-        btnAdvance.textContent = "🏁 " + (currentLang === "es" ? "Partida Terminada" : "Game Over");
         btnAdvance.disabled = true;
         btnAdvance.classList.remove("pulse");
     }
@@ -214,7 +222,8 @@ async function submitInput() {
     hideOverlay(inputOverlay);
     const result = await API.post("/api/game/input", formData);
     await refreshState();
-    setStatus(result.message);
+    // Show original phase message if milestones intercepted the result
+    setStatus(result.phase_message || result.message);
 
     if (result.status === "waiting" && result.input_needed) {
         showInputPrompt(result.input_needed);
@@ -250,6 +259,10 @@ function showInputPrompt(input) {
     const container = $("#input-fields");
     container.innerHTML = "";
     inputOverlay.dataset.inputType = input.type;
+
+    // Track field definitions for dynamic dependencies
+    let mostDemandField = null;
+    let mostDemandDiv = null;
 
     (input.fields || []).forEach(f => {
         // Skip fields with failed conditions
@@ -296,8 +309,44 @@ function showInputPrompt(input) {
             div.appendChild(group);
         }
 
+        // For demand_info: track the most_demand_items field for dynamic updates
+        if (f.name === "most_demand_items") {
+            mostDemandField = f;
+            mostDemandDiv = div;
+            div.style.display = "none"; // hidden until 2+ items checked above
+        }
+
         container.appendChild(div);
     });
+
+    // Wire dynamic dependency: items_with_demand → most_demand_items
+    if ((input.type === "demand_info" || input.type === "competition_demand_info") && mostDemandDiv) {
+        const firstCheckboxes = container.querySelectorAll('[data-field-name="items_with_demand"]');
+        const rebuildMostDemand = () => {
+            const checked = Array.from(firstCheckboxes).filter(cb => cb.checked).map(cb => cb.value);
+            if (checked.length <= 1) {
+                // 0 or 1 item: hide second list and clear its checkboxes
+                mostDemandDiv.style.display = "none";
+                mostDemandDiv.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+                return;
+            }
+            // 2+ items: show second list with only the checked items from first list
+            mostDemandDiv.style.display = "";
+            const group = mostDemandDiv.querySelector(".checkbox-group");
+            group.innerHTML = "";
+            checked.forEach(opt => {
+                const lbl = document.createElement("label");
+                const cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.value = opt;
+                cb.dataset.fieldName = "most_demand_items";
+                lbl.appendChild(cb);
+                lbl.appendChild(document.createTextNode(" " + foodLabel(opt)));
+                group.appendChild(lbl);
+            });
+        };
+        firstCheckboxes.forEach(cb => cb.addEventListener("change", rebuildMostDemand));
+    }
 
     showOverlay(inputOverlay);
 }
@@ -314,7 +363,7 @@ function refreshUI() {
 
     // Top bar
     turnBadge.textContent = `${t("turn")} ${gameState.turn_number}`;
-    phaseBadge.textContent = formatPhase(gameState.phase);
+    phaseBadge.textContent = formatPhase(gameState.display_phase || gameState.phase);
 
     // Mode button
     btnMode.textContent = gameState.mode === "full" ? t("full_mode") : t("quick_mode");
@@ -328,8 +377,9 @@ function refreshUI() {
     }
 
     // Cards
-    if (gameState.current_back_card) updateCardImage("back", gameState.current_back_card);
-    if (gameState.current_front_card) updateCardImage("front", gameState.current_front_card);
+    updateCardImage("back", gameState.current_back_card);
+    updateCardImage("front", gameState.current_front_card);
+    updateCompetitionCard();
 
     // Tracks
     updateTracks();
@@ -342,14 +392,15 @@ function refreshUI() {
     updateEmployees();
     updateMilestones();
     updateRestaurants();
+    updateChainCash();
     updateDeckInfo();
 
     // Log
     updateLog();
 
-    // Advance button
+    // Advance button — context-aware label
+    btnAdvance.textContent = getAdvanceLabel(gameState.phase);
     if (gameState.phase === "game_over") {
-        btnAdvance.textContent = "🏁 " + (currentLang === "es" ? "Partida Terminada" : "Game Over");
         btnAdvance.disabled = true;
         btnAdvance.classList.remove("pulse");
     } else if (gameState.phase === "waiting_for_input") {
@@ -359,18 +410,52 @@ function refreshUI() {
             showInputPrompt(gameState.pending_input);
         }
     } else {
-        btnAdvance.textContent = t("next_phase");
         btnAdvance.disabled = false;
         btnAdvance.classList.add("pulse");
     }
 }
 
+const PLACEHOLDER_CARD = "/static/cards/placeholder.png";
+
 function updateCardImage(side, cardData) {
     const img = side === "back" ? $("#back-card-img") : $("#front-card-img");
     if (cardData) {
         const src = side === "back" ? cardData.image_back : cardData.image_front;
-        if (src) img.src = src;
+        img.src = src || PLACEHOLDER_CARD;
+    } else {
+        img.src = PLACEHOLDER_CARD;
     }
+}
+
+function updateCompetitionCard() {
+    const slot = $("#comp-card-slot");
+    const img = $("#comp-card-img");
+    const label = $("#comp-card-label");
+    const card = gameState ? gameState.current_competition_card : null;
+
+    if (!slot) return;
+
+    if (!card) {
+        slot.classList.add("hidden");
+        return;
+    }
+
+    // Show the dedicated competition card slot
+    slot.classList.remove("hidden");
+
+    const isWarm = card.card_type === "warm";
+
+    // Set card image
+    if (card.image_front) {
+        img.src = card.image_front;
+    } else {
+        img.src = PLACEHOLDER_CARD;
+    }
+
+    // Style the label
+    const typeLabel = isWarm ? "🔴 Warm" : "🟢 Cool";
+    label.textContent = `${typeLabel} #${card.card_number}`;
+    label.className = "card-label " + (isWarm ? "warm-label" : "cool-label");
 }
 
 function updateTracks() {
@@ -379,11 +464,16 @@ function updateTracks() {
 
     // Recruit & Train
     const rtPos = tracks.recruit_train.position;
-    $("#rt-value").textContent = rtPos;
+    $("#rt-slots-value").textContent = tracks.open_slots;
+    $("#rt-food-value").textContent = `×${tracks.food_amount}`;
     $("#rt-info").textContent = `(${tracks.open_slots} ${t("open_slots")}, ${t("food")} ×${tracks.food_amount})`;
     renderTrackBar("rt-markers", 1, 4, rtPos, [
         "1", "2", "3", "4"
     ], 2); // shuffleAfter=2 inserts a SHUFFLE divider after position 2
+    // Food multiplier sub-track (×2–×5 aligned with R&T positions)
+    renderTrackBar("rt-food-markers", 1, 4, rtPos, [
+        "×2", "×3", "×4", "×5"
+    ], 2);
 
     // Price + Distance
     const pdPos = tracks.price_distance.position;
@@ -440,13 +530,14 @@ function updateInventory() {
         if (!coreItems.has(item) && modules[item] === false) return;
 
         const inv = gameState.inventory[item] || { top: 0, bottom: 0, total: 0 };
+        const row = inv.total >= 6 ? "top" : (inv.total >= 1 ? "bottom" : "");
         const div = document.createElement("div");
-        div.className = "inv-item" + (inv.total === 0 ? " empty" : "");
+        div.className = "inv-item" + (inv.total === 0 ? " empty" : "") + (row === "top" ? " top-row" : "");
         div.innerHTML = `
             <div class="inv-icon">${FOOD_ICONS[item] || "📦"}</div>
             <div class="inv-name">${t(item)}</div>
             <div class="inv-count">${inv.total}</div>
-            <div class="inv-detail">↑${inv.top} ↓${inv.bottom}</div>
+            <div class="inv-detail">${row ? (row === "top" ? "▲" : "▼") + " row" : ""}</div>
         `;
         grid.appendChild(div);
     });
@@ -457,12 +548,31 @@ function updateMarketeers() {
     container.innerHTML = "";
     (gameState.marketeer_slots || []).forEach(slot => {
         const div = document.createElement("div");
-        div.className = "slot-item";
-        div.innerHTML = `
-            <span class="slot-num">${slot.slot}</span>
-            <span class="slot-name">${slot.marketeer || t("empty")}</span>
-            ${slot.is_busy ? `<span class="slot-busy">${t("busy")}</span>` : ""}
-        `;
+        div.className = "slot-item" + (slot.is_busy ? " slot-busy-item" : "");
+        if (slot.marketeer) {
+            let details = `<span class="slot-num">${slot.slot}</span>`;
+            details += `<span class="slot-name">${slot.marketeer}</span>`;
+            if (slot.is_busy) {
+                const itemIcon = FOOD_ICONS[slot.market_item] || "";
+                const itemLabel = slot.market_item ? `${itemIcon} ${t(slot.market_item)}` : "";
+                const campNum = slot.campaign_number != null ? `#${slot.campaign_number}` : "";
+                const campLeft = slot.campaigns_left === -1
+                    ? "∞"
+                    : (slot.campaigns_left != null
+                        ? `${slot.campaigns_left} ${currentLang === "es" ? "rest." : "left"}`
+                        : "");
+                details += `<span class="slot-campaign">${itemLabel} ${campNum}</span>`;
+                details += `<span class="slot-duration">${campLeft}</span>`;
+            } else {
+                details += `<span class="slot-status">${currentLang === "es" ? "Nuevo" : "New"}</span>`;
+            }
+            div.innerHTML = details;
+        } else {
+            div.innerHTML = `
+                <span class="slot-num">${slot.slot}</span>
+                <span class="slot-name empty-slot">${t("empty")}</span>
+            `;
+        }
         container.appendChild(div);
     });
     if (gameState.mass_marketeer) {
@@ -520,16 +630,34 @@ function updateRestaurants() {
     }
 }
 
+function updateChainCash() {
+    const container = $("#chain-cash-info");
+    if (!container) return;
+    const total = gameState.chain_total_cash || 0;
+    const thisTurn = gameState.chain_cash_this_turn || 0;
+    const turnLabel = thisTurn > 0 ? ` (${t("this_turn")}: $${thisTurn})` : "";
+    container.innerHTML = `<span class="tag">$${total}${turnLabel}</span>`;
+}
+
 function updateDeckInfo() {
     const container = $("#deck-info");
     if (!gameState) return;
     const ad = gameState.action_deck || {};
+    const dp = gameState.discard_pile || {};
     const wd = gameState.warm_deck || {};
     const cd = gameState.cool_deck || {};
+    const drawn = gameState.cards_drawn_this_cycle || 0;
+    const cycles = gameState.deck_cycles || 0;
+    const total = gameState.total_cards_drawn || 0;
+    const deckSize = ad.size || 0;
+    const discardSize = dp.size || 0;
+    const posLabel = deckSize > 0 ? `${drawn} / ${deckSize + discardSize}` : "\u2014";
+    const cycleLabel = cycles > 0 ? ` \u00b7 ${t("cycle")} #${cycles}` : "";
     container.innerHTML = `
-        📇 Action: ${ad.size || 0} ${t("cards_remaining")}<br>
+        \ud83d\udcc7 Action: ${deckSize} ${t("cards_remaining")}${discardSize > 0 ? ` \u00b7 \u267b\ufe0f ${discardSize} discarded` : ""} (${posLabel}${cycleLabel})<br>
         🔴 Warm: ${wd.size || 0}<br>
-        🟢 Cool: ${cd.size || 0}
+        🟢 Cool: ${cd.size || 0}<br>
+        <small>${t("total_drawn")}: ${total}</small>
     `;
 }
 
@@ -556,18 +684,85 @@ function formatPhase(phase) {
     const phases = {
         setup: "Setup",
         restructuring: currentLang === "es" ? "Reestructurar" : "Restructuring",
+        order_of_business: currentLang === "es" ? "Orden de Juego" : "Order of Business",
         recruit_train: currentLang === "es" ? "Reclutar" : "Recruit & Train",
+        initiate_marketing: currentLang === "es" ? "Iniciar Marketing" : "Initiate Marketing",
         get_food: currentLang === "es" ? "Comida" : "Get Food",
-        marketing: "Marketing",
         develop: currentLang === "es" ? "Desarrollar" : "Develop",
         lobby: "Lobby",
         expand_chain: currentLang === "es" ? "Expandir" : "Expand Chain",
         dinnertime: currentLang === "es" ? "Cena" : "Dinnertime",
+        payday: currentLang === "es" ? "Día de Pago" : "Payday",
+        marketing_campaigns: currentLang === "es" ? "Campañas de Marketing" : "Marketing Campaigns",
         cleanup: currentLang === "es" ? "Limpieza" : "Cleanup",
         game_over: currentLang === "es" ? "Fin" : "Game Over",
         waiting_for_input: currentLang === "es" ? "Esperando..." : "Waiting...",
     };
     return phases[phase] || phase;
+}
+
+function getAdvanceLabel(nextPhase) {
+    const es = currentLang === "es";
+    const turnOrder = gameState ? gameState.turn_order : null;
+
+    // Worktime phases where turn order matters
+    const worktimePhases = [
+        "recruit_train", "initiate_marketing", "get_food",
+        "develop", "lobby", "expand_chain"
+    ];
+
+    const isWorktime = worktimePhases.includes(nextPhase);
+
+    // For worktime phases, labels depend on turn order
+    // In FCM, the first player does ALL worktime phases, then the second player
+    if (isWorktime && turnOrder) {
+        // Chain's worktime phase labels (used in both turn orders)
+        const chainLabels = {
+            recruit_train:       es ? "R&T de La Cadena ▶"          : "Chain's R&T ▶",
+            initiate_marketing:  es ? "Marketing de La Cadena ▶"    : "Chain's Marketing ▶",
+            get_food:            es ? "Comida de La Cadena ▶"       : "Chain's Get Food ▶",
+            develop:             es ? "Desarrollo de La Cadena ▶"   : "Chain's Develop ▶",
+            lobby:               es ? "Lobby de La Cadena ▶"        : "Chain's Lobby ▶",
+            expand_chain:        es ? "Expandir de La Cadena ▶"     : "Chain's Expand ▶",
+        };
+
+        if (turnOrder === "player_first" && nextPhase === "recruit_train") {
+            // Player goes first — first worktime button reminds to do ALL worktime first
+            return es
+                ? "Tu Worktime hecho → R&T Cadena ▶"
+                : "Your Worktime Done → Chain's R&T ▶";
+        }
+
+        return chainLabels[nextPhase];
+    }
+
+    // After Chain's last worktime (expand_chain), dinnertime button
+    // When chain went first, remind player to do their worktime before dinnertime
+    if (nextPhase === "dinnertime" && turnOrder === "chain_first") {
+        return es
+            ? "Tu Worktime hecho → Cena ▶"
+            : "Your Worktime Done → Dinnertime ▶";
+    }
+
+    // Non-worktime phases — standard labels
+    const labels = {
+        setup:               es ? "Iniciar Partida ▶"           : "Begin Game ▶",
+        restructuring:       es ? "Iniciar Reestructuración ▶"  : "Begin Restructuring ▶",
+        order_of_business:   es ? "Resolver Orden de Juego ▶"   : "Resolve Order of Business ▶",
+        recruit_train:       es ? "Iniciar Reclutar ▶"          : "Begin Recruit & Train ▶",
+        initiate_marketing:  es ? "Iniciar Marketing ▶"         : "Initiate Marketing ▶",
+        get_food:            es ? "Resolver Comida ▶"           : "Resolve Get Food ▶",
+        develop:             es ? "Resolver Desarrollar ▶"      : "Resolve Develop ▶",
+        lobby:               es ? "Resolver Lobby ▶"            : "Resolve Lobby ▶",
+        expand_chain:        es ? "Resolver Expandir ▶"         : "Resolve Expand Chain ▶",
+        dinnertime:          es ? "Iniciar Cena ▶"              : "Begin Dinnertime ▶",
+        payday:              es ? "Resolver Día de Pago ▶"      : "Resolve Payday ▶",
+        marketing_campaigns: es ? "Resolver Campañas ▶"         : "Resolve Campaigns ▶",
+        cleanup:             es ? "Limpieza y Fin de Turno ▶"   : "Cleanup & End Turn ▶",
+        game_over:           es ? "🏁 Partida Terminada"        : "🏁 Game Over",
+        waiting_for_input:   es ? "Esperando..."                : "Waiting...",
+    };
+    return labels[nextPhase] || (es ? "Siguiente Fase ▶" : "Next Phase ▶");
 }
 
 function foodLabel(item) {

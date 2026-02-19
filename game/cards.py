@@ -115,6 +115,7 @@ def _parse_warm_card(raw: dict) -> Card:
         competition_effect=CompetitionEffect(
             effect_type=raw["effect"],
             food_adjustments=raw.get("food_adj", []),
+            track_adjustments=raw.get("track_adj", []),
             inventory_boost=raw.get("boost", False),
             map_tile=raw.get("map_tile", 1),
         ),
@@ -131,6 +132,8 @@ def _parse_cool_card(raw: dict) -> Card:
         competition_effect=CompetitionEffect(
             effect_type=raw["effect"],
             inventory_loss_items=raw.get("loss_items", []),
+            track_adjustments=raw.get("track_adj", []),
+            inventory_drop=raw.get("drop", False),
             map_tile=raw.get("map_tile", 1),
         ),
     )

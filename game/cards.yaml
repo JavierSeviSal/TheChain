@@ -445,22 +445,127 @@ action_cards:
 warm_cards:
 
 # ── Set 1: EXPAND CHAIN (cards 1-4) ───────────────────────────────────────
-- { number: 1, effect: expand_chain, food_adj: [ { item: burger, amount: 2 }, { item: pizza, amount: 2 } ], map_tile: 1 }
-- { number: 2, effect: expand_chain, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 2 }
-- { number: 3, effect: expand_chain, food_adj: [ { item: sushi, amount: 2 }, { item: noodle, amount: 2 } ], map_tile: 3 }
-- { number: 4, effect: expand_chain, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 4 }
+- number: 1
+  effect: expand_chain
+  map_tile: 1
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: noodle, amount: 1 }
+  track_adj:
+  - { type: move_distance, value: -2 }
+  - { type: move_waitress, value: 2 }
+
+- number: 2
+  effect: expand_chain
+  map_tile: 2
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: sushi, amount: 1 }
+  track_adj:
+  - { type: move_waitress, value: 2 }
+  - { type: move_recruit_train, value: 2 }
+
+- number: 3
+  effect: expand_chain
+  map_tile: 3
+  boost: true
+  food_adj:
+  - { item: burger, amount: 1 }
+  - { item: noodle, amount: 1, module: noodle, fallback: burger }
+  track_adj:
+  - { type: move_recruit_train, value: 2 }
+
+- number: 4
+  effect: expand_chain
+  map_tile: 4
+  boost: true
+  food_adj:
+  - { item: pizza, amount: 1 }
+  - { item: sushi, amount: 1, module: sushi, fallback: pizza }
+  track_adj:
+  - { type: move_distance, value: -2 }
 
 # ── Set 2: COFFEE SHOP / EXPAND CHAIN (cards 5-8) ────────────────────────
-- { number: 5, effect: coffee_shop_or_expand, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 5, boost: true }
-- { number: 6, effect: coffee_shop_or_expand, food_adj: [ { item: burger, amount: 2 }, { item: lemonade, amount: 2 } ], map_tile: 6, boost: true }
-- { number: 7, effect: coffee_shop_or_expand, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 7, boost: true }
-- { number: 8, effect: coffee_shop_or_expand, food_adj: [ { item: pizza, amount: 2 }, { item: beer, amount: 2 } ], map_tile: 8, boost: true }
+- number: 5
+  effect: coffee_shop_or_expand
+  map_tile: 5
+  boost: true
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: coffee, amount: 1 }
+  track_adj:
+  - { type: move_distance, value: -2 }
+
+- number: 6
+  effect: coffee_shop_or_expand
+  map_tile: 6
+  boost: true
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: noodle, amount: 1 }
+  track_adj:
+  - { type: move_waitress, value: 2 }
+
+- number: 7
+  effect: coffee_shop_or_expand
+  map_tile: 7
+  food_adj:
+  - { item: pizza, amount: 1 }
+  - { item: sushi, amount: 1, module: sushi, fallback: burger }
+  track_adj:
+  - { type: move_waitress, value: 2 }
+  - { type: move_recruit_train, value: 2 }
+
+- number: 8
+  effect: coffee_shop_or_expand
+  map_tile: 8
+  food_adj:
+  - { item: beer, amount: 1 }
+  - { item: softdrink, amount: 1 }
+  - { item: lemonade, amount: 1 }
+  - { item: coffee, amount: 1 }
+  track_adj:
+  - { type: move_distance, value: -2 }
+  - { type: move_recruit_train, value: 2 }
 
 # ── Set 3: +50% CASH EARNED THIS TURN (cards 9-12) ───────────────────────
-- { number: 9, effect: bonus_cash, food_adj: [ { item: most_demand, amount: 2 } ], map_tile: 1 }
-- { number: 10, effect: bonus_cash, food_adj: [ { item: sushi, amount: 2 }, { item: kimchi, amount: 2 } ], map_tile: 2 }
-- { number: 11, effect: bonus_cash, food_adj: [ { item: all_demand, amount: 2 } ], map_tile: 3 }
-- { number: 12, effect: bonus_cash, food_adj: [ { item: noodle, amount: 2 }, { item: coffee, amount: 2 } ], map_tile: 4 }
+- number: 9
+  effect: bonus_cash
+  boost: true
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: sushi, amount: 1 }
+  track_adj:
+  - { type: move_recruit_train, value: 2 }
+
+- number: 10
+  effect: bonus_cash
+  food_adj:
+  - { item: all_demand, amount: 1 }
+  - { item: coffee, amount: 1 }
+  track_adj:
+  - { type: move_distance, value: -2 }
+  - { type: move_recruit_train, value: 2 }
+
+- number: 11
+  effect: bonus_cash
+  food_adj:
+  - { item: burger, amount: 1 }
+  - { item: noodle, amount: 1, module: noodle, fallback: pizza }
+  track_adj:
+  - { type: move_distance, value: -2 }
+  - { type: move_waitress, value: 2 }
+
+- number: 12
+  effect: bonus_cash
+  boost: true
+  food_adj:
+  - { item: beer, amount: 1 }
+  - { item: softdrink, amount: 1 }
+  - { item: lemonade, amount: 1 }
+  - { item: coffee, amount: 1 }
+  track_adj:
+  - { type: move_waitress, value: 2 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # COOL COMPETITION DECK  (12 cards)
@@ -469,19 +574,94 @@ warm_cards:
 cool_cards:
 
 # ── Set 1: NO DRIVE-INS THIS TURN (cards 1-4) ────────────────────────────
-- { number: 1, effect: no_driveins, loss_items: [ burger ], map_tile: 1 }
-- { number: 2, effect: no_driveins, loss_items: [ pizza ], map_tile: 2 }
-- { number: 3, effect: no_driveins, loss_items: [ sushi ], map_tile: 3 }
-- { number: 4, effect: no_driveins, loss_items: [ noodle ], map_tile: 4 }
+- number: 1
+  effect: no_driveins
+  drop: true
+  loss_items: [ burger, pizza ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_waitress, value: -2 }
+
+- number: 2
+  effect: no_driveins
+  loss_items: [ burger, pizza, kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 3
+  effect: no_driveins
+  drop: true
+  loss_items: [ beer, softdrink, lemonade ]
+  track_adj:
+    - { type: move_waitress, value: -2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 4
+  effect: no_driveins
+  loss_items: [ beer, softdrink, lemonade, kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_waitress, value: -2 }
 
 # ── Set 2: FIRE ALL EMPLOYEES (cards 5-8) ─────────────────────────────────
-- { number: 5, effect: fire_employees, loss_items: [ beer ], map_tile: 5 }
-- { number: 6, effect: fire_employees, loss_items: [ lemonade ], map_tile: 6 }
-- { number: 7, effect: fire_employees, loss_items: [ coffee ], map_tile: 7 }
-- { number: 8, effect: fire_employees, loss_items: [ kimchi ], map_tile: 8 }
+- number: 5
+  effect: fire_employees
+  loss_items: [ burger, pizza, beer, softdrink, lemonade ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_waitress, value: -2 }
+
+- number: 6
+  effect: fire_employees
+  drop: true
+  loss_items: [ kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 7
+  effect: fire_employees
+  drop: true
+  loss_items: [ burger, pizza ]
+  track_adj:
+    - { type: move_waitress, value: -2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 8
+  effect: fire_employees
+  loss_items: [ beer, softdrink, lemonade, kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_recruit_train, value: -2 }
 
 # ── Set 3: PAY $10 PER EMPLOYEE (cards 9-12) ─────────────────────────────
-- { number: 9, effect: pay_per_employee, loss_items: [ burger, beer ], map_tile: 1 }
-- { number: 10, effect: pay_per_employee, loss_items: [ pizza, lemonade ], map_tile: 2 }
-- { number: 11, effect: pay_per_employee, loss_items: [ sushi, coffee ], map_tile: 3 }
-- { number: 12, effect: pay_per_employee, loss_items: [ noodle, kimchi ], map_tile: 4 }
+- number: 9
+  effect: pay_per_employee
+  drop: true
+  loss_items: [ kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_waitress, value: -2 }
+
+- number: 10
+  effect: pay_per_employee
+  drop: true
+  loss_items: [ beer, softdrink, lemonade ]
+  track_adj:
+    - { type: move_distance, value: 2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 11
+  effect: pay_per_employee
+  loss_items: [ burger, pizza, kimchi, noodle, sushi ]
+  track_adj:
+    - { type: move_waitress, value: -2 }
+    - { type: move_recruit_train, value: -2 }
+
+- number: 12
+  effect: pay_per_employee
+  loss_items: [ burger, pizza, beer, softdrink, lemonade ]
+  track_adj:
+    - { type: move_waitress, value: -2 }
+    - { type: move_recruit_train, value: -2 }

@@ -148,4 +148,11 @@ def board_image(filename):
 # ─── Run ───────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    # get ip for local network access
+    import socket
+
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+    print(f"Starting server at http://{local_ip}:5000")
+    app.run(host=local_ip, port=5000)
+    # app.run(host="localhost", port=5000)
