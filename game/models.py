@@ -38,13 +38,16 @@ class CardType(Enum):
 class GamePhase(Enum):
     SETUP = "setup"
     RESTRUCTURING = "restructuring"
+    ORDER_OF_BUSINESS = "order_of_business"
     RECRUIT_TRAIN = "recruit_train"
+    INITIATE_MARKETING = "initiate_marketing"
     GET_FOOD = "get_food"
-    MARKETING = "marketing"
     DEVELOP = "develop"
     LOBBY = "lobby"
     EXPAND_CHAIN = "expand_chain"
     DINNERTIME = "dinnertime"
+    PAYDAY = "payday"
+    MARKETING_CAMPAIGNS = "marketing_campaigns"
     CLEANUP = "cleanup"
     GAME_OVER = "game_over"
     # Sub-phases for player input
@@ -130,14 +133,14 @@ class CardBack:
     )  # Specific food items or empty for demand-based
     multiplier: int = 1  # How many units to add (×1, ×2, etc.)
     cleanup_actions: list[CleanupAction] = field(default_factory=list)
-    food_item: Optional[str] = None        # Right-box food/drink item
+    food_item: Optional[str] = None  # Right-box food/drink item
     food_item_module: Optional[str] = None  # Required module for food_item
     food_item_fallback: Optional[str] = None  # Fallback if module inactive
-    food_item_multiply: int = 1             # Right-box multiplier (1 or 2)
-    develop_type: Optional[str] = None   # "house" or "garden"
+    food_item_multiply: int = 1  # Right-box multiplier (1 or 2)
+    develop_type: Optional[str] = None  # "house" or "garden"
     develop_house: Optional[str] = None  # House number (e.g. "19", "2")
-    lobby_type: Optional[str] = None     # "road" or "park"
-    lobby_house: Optional[str] = None    # House number for park (e.g. "4", "pi")
+    lobby_type: Optional[str] = None  # "road" or "park"
+    lobby_house: Optional[str] = None  # House number for park (e.g. "4", "pi")
 
 
 @dataclass
@@ -146,8 +149,12 @@ class CompetitionEffect:
 
     effect_type: str  # "expand_chain", "coffee_shop_or_expand", "bonus_cash",
     # "no_driveins", "fire_employees", "pay_per_employee"
-    food_adjustments: list[dict] = field(default_factory=list)  # [{item, amount}]
+    food_adjustments: list[dict] = field(
+        default_factory=list
+    )  # [{item, amount, module?, fallback?}]
+    track_adjustments: list[dict] = field(default_factory=list)  # [{type, value}]
     inventory_boost: bool = False
+    inventory_drop: bool = False
     inventory_loss_items: list[str] = field(default_factory=list)
     map_tile: int = 1
 
@@ -226,7 +233,9 @@ class Card:
             d["competition_effect"] = {
                 "type": self.competition_effect.effect_type,
                 "food_adjustments": self.competition_effect.food_adjustments,
+                "track_adjustments": self.competition_effect.track_adjustments,
                 "inventory_boost": self.competition_effect.inventory_boost,
+                "inventory_drop": self.competition_effect.inventory_drop,
                 "inventory_loss_items": self.competition_effect.inventory_loss_items,
                 "map_tile": self.competition_effect.map_tile,
             }
@@ -271,6 +280,18 @@ class Deck:
             "name": self.name,
             "size": self.size(),
             "top_card": self.peek().to_dict() if self.peek() else None,
+        }
+
+    def to_snapshot_dict(self) -> dict:
+        """Full serialization for undo snapshots — includes card list."""
+        return {
+            "name": self.name,
+            "size": self.size(),
+            "top_card": self.peek().to_dict() if self.peek() else None,
+            "cards": [
+                {"card_type": c.card_type.value, "card_number": c.card_number}
+                for c in self.cards
+            ],
         }
 
 
@@ -404,85 +425,104 @@ class Tracks:
 
 @dataclass
 class Inventory:
-    """Food & drink inventory with top/bottom rows (Fridge & Freezer mechanic)."""
+    """Food & drink inventory — Fridge & Freezer mechanic.
 
-    # Each item has a top_row (fresh) and bottom_row (old) count
-    items: dict = field(
-        default_factory=lambda: {
-            item.value: {"top": 0, "bottom": 0} for item in FoodItem
-        }
-    )
+    Each item is tracked as a single count 0-10.
+    The physical mat has two rows of 5 slots:
+      Bottom row: positions 1-5
+      Top row:    positions 6-10
+    Inventory Drop (-5): items on the top row (count ≥ 6) lose 5.
+    Inventory Boost (+5): items on the bottom row (count 1-5) gain 5.
+    Cap: max 10 per item (coffee is exempt).
+    """
+
+    items: dict = field(default_factory=lambda: {item.value: 0 for item in FoodItem})
     MAX_PER_ITEM = 10
 
     def add(self, item: str, amount: int):
-        """Add to top row."""
+        """Add amount, capped at MAX_PER_ITEM."""
         if item in self.items:
-            total = self.items[item]["top"] + self.items[item]["bottom"]
-            can_add = min(amount, self.MAX_PER_ITEM - total)
-            self.items[item]["top"] += max(0, can_add)
+            self.items[item] = min(self.items[item] + amount, self.MAX_PER_ITEM)
 
     def remove(self, item: str, amount: int) -> int:
-        """Remove from inventory (bottom first, then top). Returns amount actually removed."""
+        """Remove up to amount. Returns amount actually removed."""
         if item not in self.items:
             return 0
-        removed = 0
-        # Remove from bottom first
-        from_bottom = min(self.items[item]["bottom"], amount)
-        self.items[item]["bottom"] -= from_bottom
-        removed += from_bottom
-        remaining = amount - from_bottom
-        # Then from top
-        from_top = min(self.items[item]["top"], remaining)
-        self.items[item]["top"] -= from_top
-        removed += from_top
+        removed = min(self.items[item], amount)
+        self.items[item] -= removed
         return removed
 
     def total(self, item: str) -> int:
-        if item in self.items:
-            return self.items[item]["top"] + self.items[item]["bottom"]
-        return 0
+        return self.items.get(item, 0)
 
-    def inventory_drop(self):
-        """Move tokens from top row to bottom row (cleanup action)."""
-        for item in self.items:
-            self.items[item]["bottom"] += self.items[item]["top"]
-            self.items[item]["top"] = 0
+    def inventory_drop(self) -> list[str]:
+        """Cleanup action: items on the top row (≥ 6) drop by 5.
 
-    def inventory_boost(self):
-        """Move tokens from bottom to top row (warm competition effect)."""
-        for item in self.items:
-            self.items[item]["top"] += self.items[item]["bottom"]
-            self.items[item]["bottom"] = 0
+        Returns list of description strings for items that dropped.
+        """
+        msgs = []
+        for item, count in self.items.items():
+            if count >= 6:
+                old = count
+                self.items[item] = count - 5
+                msgs.append(f"{item}: {old}→{self.items[item]}")
+        return msgs
 
-    def cap_inventory(self):
-        """Enforce max 10 per item (excluding coffee per rules)."""
-        for item_name, counts in self.items.items():
-            total = counts["top"] + counts["bottom"]
-            if total > self.MAX_PER_ITEM and item_name != FoodItem.COFFEE.value:
-                excess = total - self.MAX_PER_ITEM
-                # Remove from bottom first
-                from_bottom = min(counts["bottom"], excess)
-                counts["bottom"] -= from_bottom
-                excess -= from_bottom
-                counts["top"] -= excess
+    def inventory_boost(self) -> list[str]:
+        """Competition effect: items on the bottom row (1-5) boost by 5.
+
+        Returns list of description strings for items that boosted.
+        """
+        msgs = []
+        for item, count in self.items.items():
+            if 1 <= count <= 5:
+                old = count
+                self.items[item] = count + 5
+                msgs.append(f"{item}: {old}→{self.items[item]}")
+        return msgs
+
+    def cap_inventory(self) -> list[str]:
+        """Enforce max 10 per item (excluding coffee). Returns descriptions."""
+        msgs = []
+        for item_name, count in self.items.items():
+            if count > self.MAX_PER_ITEM and item_name != FoodItem.COFFEE.value:
+                old = count
+                self.items[item_name] = self.MAX_PER_ITEM
+                msgs.append(f"{item_name}: {old}→{self.MAX_PER_ITEM}")
+        return msgs
 
     def clear_item(self, item: str):
         """Remove all of a specific item (cool competition effect)."""
         if item in self.items:
-            self.items[item] = {"top": 0, "bottom": 0}
+            self.items[item] = 0
 
     def to_dict(self) -> dict:
-        return {
-            item: {
-                "top": v["top"],
-                "bottom": v["bottom"],
-                "total": v["top"] + v["bottom"],
+        """Serialise for API / UI. Provides row info for display."""
+        result = {}
+        for item, count in self.items.items():
+            top_row = max(0, count - 5) if count > 5 else 0
+            bottom_row = min(count, 5)
+            result[item] = {
+                "count": count,
+                "top": top_row,
+                "bottom": bottom_row,
+                "total": count,
             }
-            for item, v in self.items.items()
-        }
+        return result
 
 
 # ─── Marketeers ──────────────────────────────────────────────────────────────
+
+# Campaign duration by marketeer type (number of marketing campaigns, inclusive).
+# -1 means the campaign lasts forever (Rural Marketeer).
+MARKETEER_DURATIONS = {
+    "Marketing Trainee": 2,
+    "Campaign Manager": 3,
+    "Brand Manager": 4,
+    "Brand Director": 5,
+    "Gourmet Food Critic": 3,
+    "Rural Marketeer": -1,  # Eternal — stays for the rest of the game
+}
 
 
 @dataclass
@@ -490,12 +530,20 @@ class MarketeerSlot:
     slot_number: int  # 1, 2, or 3
     marketeer: Optional[str] = None
     is_busy: bool = False
+    market_item: Optional[str] = None  # What food/drink this campaign advertises
+    campaign_number: Optional[int] = None  # Player-assigned campaign number
+    campaigns_left: Optional[int] = None  # Remaining marketing campaigns before removal
+    placed_turn: Optional[int] = None  # Turn when the marketeer started marketing
 
     def to_dict(self) -> dict:
         return {
             "slot": self.slot_number,
             "marketeer": self.marketeer,
             "is_busy": self.is_busy,
+            "market_item": self.market_item,
+            "campaign_number": self.campaign_number,
+            "campaigns_left": self.campaigns_left,
+            "placed_turn": self.placed_turn,
         }
 
 
@@ -562,6 +610,7 @@ class GameState:
 
     # Decks
     action_deck: Deck = field(default_factory=lambda: Deck(name="Action Deck"))
+    discard_pile: Deck = field(default_factory=lambda: Deck(name="Discard Pile"))
     warm_deck: Deck = field(default_factory=lambda: Deck(name="Warm Competition"))
     cool_deck: Deck = field(default_factory=lambda: Deck(name="Cool Competition"))
 
@@ -583,6 +632,20 @@ class GameState:
     # Milestones claimed by The Chain
     milestones_claimed: list[str] = field(default_factory=list)
 
+    # Milestones already claimed by the player (not available to The Chain)
+    milestones_unavailable: list[str] = field(default_factory=list)
+
+    # Milestones that triggered but need user confirmation
+    pending_milestone_checks: list[str] = field(default_factory=list)
+
+    # Phase to restore after milestone confirmation flow completes
+    phase_before_milestone: Optional[str] = None
+
+    # Queued competition card actions needing user interaction (demand prompts, restaurant placement)
+    pending_competition_actions: list[dict] = field(default_factory=list)
+    # Phase to resume after all competition actions are processed
+    phase_after_competition: Optional[str] = None
+
     # Restaurants placed by The Chain
     restaurants: list[dict] = field(default_factory=list)  # [{tile, position, ...}]
     max_restaurants: int = 3
@@ -590,6 +653,9 @@ class GameState:
     # Current revealed cards
     current_front_card: Optional[dict] = None  # Serialized card data for current turn
     current_back_card: Optional[dict] = None
+    current_competition_card: Optional[dict] = (
+        None  # Competition card encountered this turn
+    )
 
     # Bank state
     bank_breaks: int = 0
@@ -612,11 +678,38 @@ class GameState:
     # Chain's cash earned this turn (for competition adjustment)
     chain_cash_this_turn: int = 0
 
+    # Cumulative cash earned by the Chain across all turns
+    chain_total_cash: int = 0
+
     # Bonus cash flag (from warm competition)
     bonus_cash_multiplier: float = 1.0
 
     # No drive-ins flag (from cool competition)
     no_driveins_this_turn: bool = False
+
+    # Movie star tracking (B > C > D; None = no movie star)
+    chain_movie_star: Optional[str] = None
+
+    # Turn order decided during Order of Business (informational)
+    turn_order: Optional[str] = None  # "chain_first" or "player_first"
+
+    # Display phase: the phase currently shown to the user (not the next queued phase)
+    display_phase: Optional[str] = None
+
+    # Deck progress tracking
+    cards_drawn_this_cycle: int = 0
+    deck_cycles: int = 0
+    total_cards_drawn: int = 0
+
+    def reshuffle_deck(self):
+        """Combine discard pile back into action deck and shuffle.
+        Called when action deck runs out or on R&T track shuffle trigger."""
+        if self.discard_pile.cards:
+            self.action_deck.cards.extend(self.discard_pile.cards)
+            self.discard_pile.cards.clear()
+        self.action_deck.shuffle()
+        self.deck_cycles += 1
+        self.cards_drawn_this_cycle = 0
 
     def log(self, message: str, category: str = "info"):
         self.action_log.append(
@@ -631,6 +724,11 @@ class GameState:
     def save_snapshot(self):
         """Save current state to history for undo."""
         snapshot = self.to_dict()
+        # Replace lightweight deck dicts with full card-list snapshots
+        snapshot["action_deck"] = self.action_deck.to_snapshot_dict()
+        snapshot["discard_pile"] = self.discard_pile.to_snapshot_dict()
+        snapshot["warm_deck"] = self.warm_deck.to_snapshot_dict()
+        snapshot["cool_deck"] = self.cool_deck.to_snapshot_dict()
         # Don't include history in the snapshot to avoid nesting
         snapshot.pop("history", None)
         self.history.append(json.dumps(snapshot))
@@ -647,6 +745,7 @@ class GameState:
             "modules": self.modules,
             "optional_rules": self.optional_rules,
             "action_deck": self.action_deck.to_dict(),
+            "discard_pile": self.discard_pile.to_dict(),
             "warm_deck": self.warm_deck.to_dict(),
             "cool_deck": self.cool_deck.to_dict(),
             "tracks": self.tracks.to_dict(),
@@ -659,12 +758,22 @@ class GameState:
             "max_restaurants": self.max_restaurants,
             "current_front_card": self.current_front_card,
             "current_back_card": self.current_back_card,
+            "current_competition_card": self.current_competition_card,
             "bank_breaks": self.bank_breaks,
             "action_log": self.action_log[-50:],  # Last 50 entries
             "pending_input": self.pending_input,
             "is_first_turn": self.is_first_turn,
             "pending_stars": self.pending_stars,
             "chain_cash_this_turn": self.chain_cash_this_turn,
+            "chain_total_cash": self.chain_total_cash,
             "bonus_cash_multiplier": self.bonus_cash_multiplier,
             "no_driveins_this_turn": self.no_driveins_this_turn,
+            "milestones_unavailable": self.milestones_unavailable,
+            "pending_milestone_checks": self.pending_milestone_checks,
+            "phase_before_milestone": self.phase_before_milestone,
+            "pending_competition_actions": self.pending_competition_actions,
+            "phase_after_competition": self.phase_after_competition,
+            "chain_movie_star": self.chain_movie_star,
+            "turn_order": self.turn_order,
+            "display_phase": self.display_phase or self.phase.value,
         }
