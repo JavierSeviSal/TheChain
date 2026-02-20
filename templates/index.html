@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>The Chain — FCM Solo Automa</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=27">
+    <link rel="stylesheet" href="/static/css/style.css?v=28">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 </head>
 <body>
@@ -41,6 +41,19 @@
         <div class="overlay-content setup-panel">
             <h2 data-i18n="new_game_setup">New Game Setup</h2>
 
+            <div class="setup-tabs">
+                <button id="btn-tab-individual" class="tab-btn active" data-i18n="tab_individual">Individual Options</button>
+                <button id="btn-tab-scenarios" class="tab-btn" data-i18n="tab_scenarios">Pre-set Scenarios</button>
+            </div>
+
+            <!-- Scenario View -->
+            <div id="scenario-view" class="hidden">
+                <p class="scenario-hint" data-i18n="scenario_hint">Pick a scenario to pre-fill modules &amp; options. You can tweak them after.</p>
+                <div id="scenario-list" class="scenario-list"></div>
+            </div>
+
+            <!-- Individual Options View -->
+            <div id="individual-view">
             <h3 data-i18n="modules">Expansion Modules</h3>
             <div class="module-actions">
                 <button type="button" id="btn-enable-all" class="small-btn" data-i18n="enable_all">Enable All</button>
@@ -55,7 +68,7 @@
                 <label><input type="checkbox" id="mod-mass-marketeer"> 📢 <span data-i18n="mod_mass_marketeer">Mass Marketeer</span></label>
                 <label><input type="checkbox" id="mod-rural-marketeer"> 🌾 <span data-i18n="mod_rural_marketeer">Rural Marketeer</span></label>
                 <label><input type="checkbox" id="mod-night-shift"> 🌙 <span data-i18n="mod_night_shift">Night Shift Manager</span></label>
-                <label><input type="checkbox" id="mod-ketchup"> 🟥 <span data-i18n="mod_ketchup">Ketchup</span></label>
+                <label><input type="checkbox" id="mod-ketchup"> 🥫 <span data-i18n="mod_ketchup">Ketchup</span></label>
                 <label><input type="checkbox" id="mod-fry-chefs"> 🍟 <span data-i18n="mod_fry_chefs">Fry Chefs</span></label>
                 <label><input type="checkbox" id="mod-movie-stars"> 🎬 <span data-i18n="mod_movie_stars">Movie Stars</span></label>
                 <label><input type="checkbox" id="mod-reserve-prices"> 💰 <span data-i18n="mod_reserve_prices">Reserve Prices</span></label>
@@ -79,6 +92,8 @@
                 <label><input type="radio" name="mode" value="quick"> ⚡ Quick Mode</label>
             </div>
 
+            </div><!-- /individual-view -->
+
             <div class="setup-actions">
                 <button id="btn-start-game" class="primary-btn" data-i18n="start_game">Start Game</button>
                 <button id="btn-cancel-setup" class="muted-btn" data-i18n="cancel">Cancel</button>
@@ -99,6 +114,16 @@
     <div id="card-overlay" class="overlay hidden">
         <img id="card-zoom-img" src="" alt="Card">
         <button id="btn-close-card" class="close-card-btn">✕</button>
+    </div>
+
+    <!-- ─── Reserve Card Reveal Overlay ────────────────────────── -->
+    <div id="reserve-reveal-overlay" class="overlay hidden" onclick="closeReserveReveal()">
+        <div class="reserve-reveal-content" onclick="event.stopPropagation()">
+            <div class="reserve-reveal-header">🏦 The Chain's Bank Reserve</div>
+            <p class="reserve-reveal-sub">The bank card secretly chosen at the start of this game was…</p>
+            <img id="reserve-reveal-img" src="" alt="Reserve card" class="reserve-reveal-img">
+            <button class="primary-btn" onclick="closeReserveReveal()">Got it</button>
+        </div>
     </div>
 
     <!-- ─── Input Overlay (for player prompts) ───────────────── -->
@@ -225,8 +250,11 @@
                     <div id="restaurant-list" class="tag-list"></div>
                 </div>
                 <div class="info-section">
-                    <h4>💰 <span data-i18n="chain_cash">Chain Cash</span></h4>
-                    <div id="chain-cash-info" class="tag-list"></div>
+                    <div class="cash-display">
+                        <div class="cash-label">💰 <span data-i18n="chain_cash">Chain Cash</span></div>
+                        <div class="cash-total" id="chain-cash-total">$0</div>
+                        <div class="cash-turn" id="chain-cash-turn"></div>
+                    </div>
                 </div>
                 <div class="info-section">
                     <h4>📊 <span data-i18n="deck_info">Deck</span></h4>

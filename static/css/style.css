@@ -12,11 +12,11 @@
     --accent2: #f5a623;
     --text: #eaeaea;
     --text-muted: #8892a4;
-    --warm: #e94560;
-    --cool: #4ecdc4;
-    --neutral: #c7b198;
-    --hot: #ff3333;
-    --cold: #3498db;
+    --warm: #E86C5E;
+    --cool: #BAD8DA;
+    --neutral: #FDF2D6;
+    --hot: #AE3738;
+    --cold: #88C4A4;
     --green: #27ae60;
     --radius: 10px;
     --shadow: 0 4px 15px rgba(0,0,0,0.4);
@@ -166,11 +166,101 @@ body {
 }
 
 .menu-btn:hover, .menu-btn:active { background: var(--accent); }
-.menu-btn.warn { color: var(--hot); }
-.menu-btn.warn:hover { background: var(--hot); color: #fff; }
+.menu-btn.warn { 
+    color: var(--accent);
+    font-weight: bold;
+}
+.menu-btn.warn:hover { background: var(--accent); color: #fff; }
 .menu-btn.muted { color: var(--text-muted); background: transparent; text-align: center; }
 
 /* ─── Setup Panel ───────────────────────────────────────────────── */
+
+.setup-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--text-muted);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border: none;
+    background: var(--bg-panel);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+}
+
+.tab-btn:hover {
+    background: #1a3a6e;
+    color: var(--text);
+}
+
+.tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.scenario-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-style: italic;
+}
+
+.scenario-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.scenario-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    background: var(--bg-panel);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text);
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.scenario-btn:hover {
+    background: #1a3a6e;
+    border-color: var(--accent);
+}
+
+.scenario-emoji {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    width: 36px;
+    text-align: center;
+}
+
+.scenario-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.scenario-info strong {
+    font-size: 0.9rem;
+}
+
+.scenario-info small {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
 
 .module-actions {
     display: flex;
@@ -447,7 +537,7 @@ body {
 }
 
 .track-name {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: var(--text-muted);
     min-width: 65px;
@@ -468,7 +558,7 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1;
-    gap: 2px;
+    gap: 0px;
 }
 .track-bars-group .track-bar {
     flex: none;
@@ -476,12 +566,12 @@ body {
 
 /* Sub-bar (food multiplier) */
 .track-sub-bar {
-    height: 22px;
-    border-radius: 11px;
+    height: 25px;
+    border-radius: 12px;
     opacity: 0.85;
 }
 .track-sub-bar .marker {
-    font-size: 0.55rem;
+    font-size: 0.8rem;
     height: 16px;
     border-radius: 3px;
 }
@@ -509,7 +599,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.6rem;
+    font-size: 0.7rem;
     font-weight: 700;
     cursor: pointer;
 }
@@ -524,6 +614,20 @@ body {
 #rt-markers .marker.active {
     background: #B8B0AC;
     box-shadow: 0 0 8px #B8B0AC;
+    color: #222;
+}
+
+/* Waitresses track: purple active markers */
+#wait-markers .marker.active {
+    background: #AB8AB4;
+    box-shadow: 0 0 8px #AB8AB4;
+    color: #222;
+}
+
+/* Distance track: purple active markers */
+#pd-markers .marker.active {
+    background: #ED9E86;
+    box-shadow: 0 0 8px #ED9E86;
     color: #222;
 }
 
@@ -544,11 +648,18 @@ body {
 .track-value {
     font-size: 1.2rem;
     font-weight: 700;
-    color: var(--accent2);
     min-width: 28px;
     text-align: center;
 }
 
+
+#pd-value {
+    color: #ED9E86;
+}
+
+#wait-value {
+    color: #AB8AB4;
+}
 /* Stacked double value for R&T */
 .track-value-group {
     display: flex;
@@ -564,10 +675,12 @@ body {
     color: #B8B0AC;
 }
 .track-value-group .tv-food {
-    font-size: 0.85rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #84A15B;
 }
+
+
 
 .track-info {
     font-size: 0.65rem;
@@ -648,6 +761,32 @@ body {
 }
 
 .inv-item.empty .inv-count { color: var(--text-muted); }
+
+.inv-delta-row {
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+    min-height: 14px;
+    margin-top: 2px;
+}
+
+.inv-delta {
+    font-size: 0.6rem;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 1px 4px;
+    line-height: 1.2;
+}
+
+.inv-delta.gain {
+    color: var(--green);
+    background: rgba(39, 174, 96, 0.15);
+}
+
+.inv-delta.loss {
+    color: var(--hot);
+    background: rgba(174, 55, 56, 0.15);
+}
 
 /* ─── Info Panel ──────────────────────────────────────────────── */
 
@@ -730,6 +869,40 @@ body {
 .deck-info {
     font-size: 0.8rem;
     color: var(--text-muted);
+}
+
+/* ─── Chain Cash Display ─────────────────────────────────────── */
+
+.cash-display {
+    background: linear-gradient(135deg, #1a2a1a, #0f3460);
+    border: 1px solid var(--accent2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    text-align: center;
+}
+
+.cash-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent2);
+    margin-bottom: 4px;
+}
+
+.cash-total {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--green);
+    line-height: 1;
+    letter-spacing: -0.5px;
+}
+
+.cash-turn {
+    font-size: 0.75rem;
+    color: var(--accent2);
+    margin-top: 4px;
+    font-weight: 600;
 }
 
 /* ─── Action Log ──────────────────────────────────────────────── */
@@ -927,6 +1100,49 @@ body {
     .inv-grid { grid-template-columns: repeat(8, 1fr); }
 
     .info-panel { grid-template-columns: 1fr 1fr; }
+}
+
+/* ─── Reserve Card Reveal ────────────────────────────────────── */
+
+.reserve-reveal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 28px 24px 24px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.reserve-reveal-header {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent2);
+    letter-spacing: 0.5px;
+}
+
+.reserve-reveal-sub {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.reserve-reveal-img {
+    width: 100%;
+    max-width: 320px;
+    border-radius: var(--radius);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    border: 2px solid var(--accent2);
+    animation: cardReveal 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cardReveal {
+    from { opacity: 0; transform: scale(0.85) translateY(20px); }
+    to   { opacity: 1; transform: scale(1)   translateY(0); }
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────── */
