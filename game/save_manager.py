@@ -155,6 +155,8 @@ def _serialize_full_state(state: GameState) -> dict:
         "milestones_unavailable": state.milestones_unavailable.copy(),
         "pending_milestone_checks": state.pending_milestone_checks.copy(),
         "phase_before_milestone": state.phase_before_milestone,
+        "pending_employee_checks": [c.copy() for c in state.pending_employee_checks],
+        "phase_before_employee_check": state.phase_before_employee_check,
         "pending_competition_actions": [
             a.copy() for a in state.pending_competition_actions
         ],
@@ -165,6 +167,7 @@ def _serialize_full_state(state: GameState) -> dict:
         "current_back_card": state.current_back_card,
         "current_competition_card": state.current_competition_card,
         "bank_breaks": state.bank_breaks,
+        "bank_reserve_card": state.bank_reserve_card,
         "action_log": state.action_log[-100:],
         "is_first_turn": state.is_first_turn,
         "pending_stars": state.pending_stars,
@@ -176,6 +179,7 @@ def _serialize_full_state(state: GameState) -> dict:
         "turn_order": state.turn_order,
         "display_phase": state.display_phase,
         "pending_input": state.pending_input,
+        "next_phase_after_input": state.next_phase_after_input,
         "cards_drawn_this_cycle": state.cards_drawn_this_cycle,
         "deck_cycles": state.deck_cycles,
         "total_cards_drawn": state.total_cards_drawn,
@@ -280,6 +284,8 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.milestones_unavailable = data.get("milestones_unavailable", [])
     state.pending_milestone_checks = data.get("pending_milestone_checks", [])
     state.phase_before_milestone = data.get("phase_before_milestone")
+    state.pending_employee_checks = data.get("pending_employee_checks", [])
+    state.phase_before_employee_check = data.get("phase_before_employee_check")
     state.pending_competition_actions = data.get("pending_competition_actions", [])
     state.phase_after_competition = data.get("phase_after_competition")
     state.restaurants = data.get("restaurants", [])
@@ -288,6 +294,7 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.current_back_card = data.get("current_back_card")
     state.current_competition_card = data.get("current_competition_card")
     state.bank_breaks = data.get("bank_breaks", 0)
+    state.bank_reserve_card = data.get("bank_reserve_card", None)
     state.action_log = data.get("action_log", [])
     state.is_first_turn = data.get("is_first_turn", False)
     state.pending_stars = data.get("pending_stars", [])
@@ -299,6 +306,7 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.turn_order = data.get("turn_order", None)
     state.display_phase = data.get("display_phase", None)
     state.pending_input = data.get("pending_input")
+    state.next_phase_after_input = data.get("next_phase_after_input")
     state.cards_drawn_this_cycle = data.get("cards_drawn_this_cycle", 0)
     state.deck_cycles = data.get("deck_cycles", 0)
     state.total_cards_drawn = data.get("total_cards_drawn", 0)

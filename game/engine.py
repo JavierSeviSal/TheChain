@@ -101,6 +101,9 @@ class GameEngine:
         self.state.turn_number = 0
         self.state.is_first_turn = True
 
+        # Secretly pick one of the three bank reserve cards (revealed on first bank break)
+        self.state.bank_reserve_card = random.choice(["100", "200", "300"])
+
         self.state.log("New game started!", "setup")
         self.state.log(
             f"Modules: {', '.join(k for k, v in self.state.modules.items() if v)}",
@@ -244,6 +247,60 @@ class GameEngine:
             "input_needed": self.state.pending_input,
         }
 
+    def _chain_has_employee(self, name: str) -> bool:
+        """Check if The Chain already has this employee/Brand Director."""
+        if name in self.state.employee_pile:
+            return True
+        if any(s.marketeer == name for s in self.state.marketeer_slots):
+            return True
+        if any(c["name"] == name for c in self.state.pending_employee_checks):
+            return True
+        return False
+
+    def _prompt_pending_employee_checks(self, result: dict) -> dict:
+        """If employee availability checks are pending, intercept with a prompt."""
+        if not self.state.pending_employee_checks:
+            return result
+        if result.get("status") in ("waiting", "game_over", "error"):
+            return result
+
+        check = self.state.pending_employee_checks[0]
+        name = check["name"]
+
+        if self.state.phase_before_employee_check is None:
+            self.state.phase_before_employee_check = self.state.phase.value
+
+        self.state.pending_input = {
+            "type": "employee_available_confirm",
+            "employee_check": check,
+            "prompt": (
+                f"🧑‍💼 The Chain wants to recruit: {name}.\n"
+                f"Is this employee available? (Does the player NOT have it?)"
+            ),
+            "prompt_es": (
+                f"🧑‍💼 La Cadena quiere reclutar: {name}.\n"
+                f"¿Está este empleado disponible? (¿El jugador NO lo tiene?)"
+            ),
+            "fields": [
+                {
+                    "name": "available",
+                    "label": f"Is {name} available for The Chain?",
+                    "label_es": f"¿Está {name} disponible para La Cadena?",
+                    "type": "select",
+                    "options": ["yes", "no"],
+                },
+            ],
+        }
+        self.state.phase = GamePhase.WAITING_FOR_INPUT
+
+        phase_message = result.get("message", "")
+        return {
+            "status": "waiting",
+            "message": f"Employee availability check: {name}",
+            "phase_message": phase_message,
+            "input_needed": self.state.pending_input,
+        }
+
     WORKTIME_PHASES = {
         "recruit_train",
         "initiate_marketing",
@@ -274,10 +331,18 @@ class GameEngine:
         self.state.save_snapshot()
         phase = self.state.phase
 
+        # Resume after a delayed phase transition (input resolved, user reviewed)
+        if phase == GamePhase.WAITING_FOR_INPUT and self.state.next_phase_after_input:
+            next_p = self.state.next_phase_after_input
+            self.state.next_phase_after_input = None
+            self.state.phase = GamePhase(next_p)
+            self.state.display_phase = next_p
+            phase = self.state.phase  # update local var for handler lookup
+
         # Track the phase being executed for display purposes
         # (handlers transition state.phase to the NEXT phase, but the UI
         # should show the phase that is currently running)
-        if phase != GamePhase.WAITING_FOR_INPUT:
+        elif phase != GamePhase.WAITING_FOR_INPUT:
             self.state.display_phase = phase.value
 
         handlers = {
@@ -303,12 +368,46 @@ class GameEngine:
         handler = handlers.get(phase)
         if handler:
             result = handler()
+            result = self._prompt_pending_employee_checks(result)
             return self._prompt_pending_milestones(result)
         return {"status": "error", "message": f"Unknown phase: {phase.value}"}
 
+    # Input types that should auto-advance (setup flow, not game phase transitions)
+    _AUTO_ADVANCE_INPUTS = {
+        "first_restaurant_placed",
+        "player_first_restaurant_placed",
+        "milestone_confirm",
+        "employee_available_confirm",
+        "acknowledge",
+        "bank_break",
+        "acknowledge_competition_card",
+    }
+
     def process_input(self, input_data: dict) -> dict:
-        """Process player input (e.g., dinnertime earnings comparison)."""
+        """Process player input (e.g., dinnertime earnings comparison).
+
+        After resolving an input that completes a game phase, the phase
+        transition is delayed: the result is shown to the player, and they
+        must click Advance to proceed to the next phase.
+        """
         self.state.save_snapshot()
+        result = self._dispatch_input(input_data)
+
+        # Delay phase transitions so the player can review results
+        input_type = input_data.get("type", "")
+        if (
+            input_type not in self._AUTO_ADVANCE_INPUTS
+            and result.get("status") == "ok"
+            and result.get("next_phase")
+        ):
+            self.state.next_phase_after_input = result["next_phase"]
+            self.state.phase = GamePhase.WAITING_FOR_INPUT
+            self.state.pending_input = None
+
+        return result
+
+    def _dispatch_input(self, input_data: dict) -> dict:
+        """Route input to the appropriate handler."""
         input_type = input_data.get("type", "")
 
         if input_type == "first_restaurant_placed":
@@ -460,10 +559,32 @@ class GameEngine:
                     "status": "game_over",
                     "message": "Second bank break! The game is over!",
                 }
+            # First bank break — reveal the secretly chosen reserve card
             return {
                 "status": "ok",
                 "message": f"Bank break #{self.state.bank_breaks} recorded.",
+                "reveal_reserve_card": self.state.bank_reserve_card,
             }
+
+        elif input_type == "acknowledge_competition_card":
+            self.state.pending_input = None
+            # Resolve the stacked competition card the player was just shown
+            top = self.state.action_deck.peek()
+            if top and top.card_type in (CardType.WARM, CardType.COOL):
+                msg = self._check_resolve_competition(top)
+                self.state.log(
+                    f"Resolved stacked competition card: {msg}", "competition"
+                )
+                # If yet another competition card is on top, queue it
+                next_top = self.state.action_deck.peek()
+                if next_top and next_top.card_type in (CardType.WARM, CardType.COOL):
+                    self.state.pending_competition_actions.insert(
+                        0, {"action": "check_stacked_competition"}
+                    )
+                final_top = self.state.action_deck.peek()
+                if final_top:
+                    self.state.current_front_card = final_top.to_dict()
+            return self._resume_after_competition()
 
         elif input_type == "restaurant_placed":
             tile = input_data.get("tile", 1)
@@ -513,6 +634,65 @@ class GameEngine:
                 self.state.phase_before_milestone = None
 
             return {"status": "ok", "message": msg}
+
+        elif input_type == "employee_available_confirm":
+            check = (self.state.pending_input or {}).get("employee_check", {})
+            name = check.get("name", "")
+            recruit_type = check.get("type", "employee")
+            available = input_data.get("available", "yes")
+            self.state.pending_input = None
+
+            # Remove from pending checks
+            if check in self.state.pending_employee_checks:
+                self.state.pending_employee_checks.remove(check)
+
+            if available == "yes":
+                if recruit_type == "brand_director":
+                    placed = False
+                    for slot in self.state.marketeer_slots:
+                        if slot.marketeer is None:
+                            slot.marketeer = "Brand Director"
+                            self.state.log(
+                                f"Brand Director placed in Marketeer slot {slot.slot_number}.",
+                                "recruit_train",
+                            )
+                            placed = True
+                            break
+                    if not placed:
+                        self.state.log(
+                            "No marketeer slot for Brand Director.", "recruit_train"
+                        )
+                    msg = (
+                        "Recruited: Brand Director"
+                        if placed
+                        else "No slot for Brand Director"
+                    )
+                else:
+                    self.state.employee_pile.append(name)
+                    self.state.log(
+                        f"Recruited {name} to Employee Pile.", "recruit_train"
+                    )
+                    msg = f"Recruited: {name}"
+            else:
+                self.state.log(
+                    f"{name} not available (player has it). Skipping.",
+                    "recruit_train",
+                )
+                msg = f"{name} not available (player has it)"
+
+            # If more employee checks pending, prompt next one
+            if self.state.pending_employee_checks:
+                return self._prompt_pending_employee_checks(
+                    {"status": "ok", "message": msg}
+                )
+
+            # All employee checks resolved — restore phase
+            if self.state.phase_before_employee_check:
+                self.state.phase = GamePhase(self.state.phase_before_employee_check)
+                self.state.phase_before_employee_check = None
+
+            # Check for pending milestones that may have queued during recruit_train
+            return self._prompt_pending_milestones({"status": "ok", "message": msg})
 
         return {"status": "error", "message": f"Unknown input type: {input_type}"}
 
@@ -574,6 +754,7 @@ class GameEngine:
         self.state.no_driveins_this_turn = False
         self.state.chain_cash_this_turn = 0
         self.state.current_competition_card = None
+        self.state.inventory.reset_delta()
 
         # STEP 1: Flip top card to reveal back side + front side of next card
         top_card = self.state.action_deck.draw()
@@ -622,28 +803,23 @@ class GameEngine:
         # STEP 2: Competition Adjustment
         result_msgs = self._competition_adjustment()
 
-        # STEP 3: Check if competition card is now on top — keep resolving/discarding
-        # until we reach a normal action card (or the deck is empty)
-        competition_cards_handled = []
-        while True:
-            top_after = self.state.action_deck.peek()
-            if not top_after or top_after.card_type not in (
-                CardType.WARM,
-                CardType.COOL,
-            ):
-                break
+        # STEP 3: Resolve only the first competition card on top (if any).
+        # Any further stacked competition cards are queued so the player
+        # sees and acknowledges each one individually.
+        top_after = self.state.action_deck.peek()
+        if top_after and top_after.card_type in (CardType.WARM, CardType.COOL):
             resolved_msg = self._check_resolve_competition(top_after)
             if resolved_msg:
                 result_msgs.append(resolved_msg)
-            # Track all competition cards encountered this turn
-            if self.state.current_competition_card:
-                competition_cards_handled.append(self.state.current_competition_card)
+            # If there is still another competition card on top, queue it
+            next_top = self.state.action_deck.peek()
+            if next_top and next_top.card_type in (CardType.WARM, CardType.COOL):
+                self.state.pending_competition_actions.insert(
+                    0, {"action": "check_stacked_competition"}
+                )
 
-        # Store the last competition card for the UI (or the only one)
-        if competition_cards_handled:
-            self.state.current_competition_card = competition_cards_handled[-1]
-
-        # Update the front card to whatever action card is now on top
+        # Update the front card to whatever is now on top
+        # (may still be a competition card if one was just queued)
         final_top = self.state.action_deck.peek()
         if final_top:
             self.state.current_front_card = final_top.to_dict()
@@ -974,6 +1150,10 @@ class GameEngine:
         Deferred effects that need user interaction (demand prompts,
         restaurant placement) are queued in pending_competition_actions
         and processed after the restructuring loop finishes.
+
+        Order of actions follows the card descriptions:
+          Cool: effect_type → inventory_drop → inventory_loss → tracks
+          Warm: effect_type → food_adjustments → inventory_boost → tracks
         """
         if not card.competition_effect:
             return "No effect."
@@ -982,47 +1162,9 @@ class GameEngine:
         msgs = []
         food_amount = self.state.tracks.get_food_amount()
 
-        # Apply food adjustments (with module/fallback support)
-        for adj in effect.food_adjustments:
-            item = adj["item"]
-            multiplier = adj.get("amount", 1)
-            module = adj.get("module")
-            fallback = adj.get("fallback")
-
-            if item in ("all_demand", "most_demand"):
-                # Queue deferred action — needs user input about demand on map
-                self.state.pending_competition_actions.append(
-                    {
-                        "action": "competition_demand_info",
-                        "demand_type": item,
-                        "multiplier": multiplier,
-                        "food_amount": food_amount,
-                    }
-                )
-                msgs.append(
-                    f"{item.replace('_', ' ').title()}: will ask for demand info"
-                )
-            else:
-                # Specific item: use R&T track food_amount × multiplier
-                actual_amount = food_amount * multiplier
-                if module and not self.state.modules.get(module, False):
-                    if fallback:
-                        self.state.inventory.add(fallback, actual_amount)
-                        msgs.append(
-                            f"+{actual_amount} {fallback} (fallback, {module} not in play)"
-                        )
-                    else:
-                        msgs.append(f"Skipped {item} ({module} not in play)")
-                elif not _is_item_available(item, self.state.modules):
-                    msgs.append(f"Skipped {item} (module not in play)")
-                else:
-                    self.state.inventory.add(item, actual_amount)
-                    msgs.append(f"+{actual_amount} {item}")
-
-        # Type-specific effects
+        # ── Step 1: Type-specific effects (always first) ──────────────
         if effect.effect_type == "expand_chain":
             if len(self.state.restaurants) < self.state.max_restaurants:
-                # Queue deferred action — needs user to place restaurant
                 self.state.pending_competition_actions.append(
                     {
                         "action": "competition_expand_chain",
@@ -1056,49 +1198,70 @@ class GameEngine:
         elif effect.effect_type == "no_driveins":
             self.state.no_driveins_this_turn = True
             msgs.append("NO DRIVE-INS this turn!")
-            for item in effect.inventory_loss_items:
-                self.state.inventory.clear_item(item)
-                msgs.append(f"INVENTORY LOSS: all {item} removed.")
 
         elif effect.effect_type == "fire_employees":
-            # Return all employees from pile to pool
+            # Fire all employees from pile (marketeers with active campaigns stay)
             fired = list(self.state.employee_pile)
             self.state.employee_pile.clear()
-            for slot in self.state.marketeer_slots:
-                if slot.marketeer:
-                    fired.append(slot.marketeer)
-                    slot.marketeer = None
-                    slot.is_busy = False
-                    slot.market_item = None
-                    slot.campaign_number = None
-                    slot.campaigns_left = None
-                    slot.placed_turn = None
             msgs.append(
                 f"FIRE ALL EMPLOYEES: {', '.join(fired) if fired else 'none to fire'}."
             )
-            for item in effect.inventory_loss_items:
-                self.state.inventory.clear_item(item)
-                msgs.append(f"INVENTORY LOSS: all {item} removed.")
 
         elif effect.effect_type == "pay_per_employee":
             emp_count = len(self.state.employee_pile) + sum(
-                1 for s in self.state.marketeer_slots if s.marketeer
+                1 for s in self.state.marketeer_slots if s.marketeer == "Brand Director"
             )
             cost = emp_count * 10
-            msgs.append(f"PAY $10 PER EMPLOYEE: {emp_count} employees × $10 = ${cost}.")
-            for item in effect.inventory_loss_items:
-                self.state.inventory.clear_item(item)
-                msgs.append(f"INVENTORY LOSS: all {item} removed.")
+            actual_paid = min(cost, self.state.chain_total_cash)
+            self.state.chain_total_cash = max(0, self.state.chain_total_cash - cost)
+            short = cost - actual_paid
+            detail = f" (only ${actual_paid} available)" if short > 0 else ""
+            msgs.append(
+                f"PAY $10 PER EMPLOYEE: {emp_count} employees × $10 = ${cost}{detail}. "
+                f"Chain cash: ${self.state.chain_total_cash}."
+            )
+            self.state.log(
+                f"Competition pay_per_employee: −${actual_paid} from chain cash "
+                f"(was ${self.state.chain_total_cash + actual_paid}, now ${self.state.chain_total_cash}).",
+                "competition",
+            )
 
-        # Inventory boost (independent of effect type)
-        if effect.inventory_boost:
-            boost_details = self.state.inventory.inventory_boost()
-            if boost_details:
-                msgs.append(f"INVENTORY BOOST: {', '.join(boost_details)}")
+        # ── Step 2: Food adjustments (warm cards) ─────────────────────
+        for adj in effect.food_adjustments:
+            item = adj["item"]
+            multiplier = adj.get("amount", 1)
+            module = adj.get("module")
+            fallback = adj.get("fallback")
+
+            if item in ("all_demand", "most_demand"):
+                self.state.pending_competition_actions.append(
+                    {
+                        "action": "competition_demand_info",
+                        "demand_type": item,
+                        "multiplier": multiplier,
+                        "food_amount": food_amount,
+                    }
+                )
+                msgs.append(
+                    f"{item.replace('_', ' ').title()}: will ask for demand info"
+                )
             else:
-                msgs.append("INVENTORY BOOST: no items on bottom row.")
+                actual_amount = food_amount * multiplier
+                if module and not self.state.modules.get(module, False):
+                    if fallback:
+                        self.state.inventory.add(fallback, actual_amount)
+                        msgs.append(
+                            f"+{actual_amount} {fallback} (fallback, {module} not in play)"
+                        )
+                    else:
+                        msgs.append(f"Skipped {item} ({module} not in play)")
+                elif not _is_item_available(item, self.state.modules):
+                    msgs.append(f"Skipped {item} (module not in play)")
+                else:
+                    self.state.inventory.add(item, actual_amount)
+                    msgs.append(f"+{actual_amount} {item}")
 
-        # Inventory drop (independent of effect type)
+        # ── Step 3: Inventory drop (cool cards, before inventory loss) ─
         if effect.inventory_drop:
             drop_details = self.state.inventory.inventory_drop()
             if drop_details:
@@ -1106,7 +1269,20 @@ class GameEngine:
             else:
                 msgs.append("INVENTORY DROP: no items on top row.")
 
-        # Track adjustments
+        # ── Step 4: Inventory loss (cool cards, after drop) ───────────
+        for item in effect.inventory_loss_items:
+            self.state.inventory.clear_item(item)
+            msgs.append(f"INVENTORY LOSS: all {item} removed.")
+
+        # ── Step 5: Inventory boost (warm cards) ──────────────────────
+        if effect.inventory_boost:
+            boost_details = self.state.inventory.inventory_boost()
+            if boost_details:
+                msgs.append(f"INVENTORY BOOST: {', '.join(boost_details)}")
+            else:
+                msgs.append("INVENTORY BOOST: no items on bottom row.")
+
+        # ── Step 6: Track adjustments (always last) ───────────────────
         for ta in effect.track_adjustments:
             ta_type = ta["type"]
             ta_value = ta["value"]
@@ -1250,6 +1426,40 @@ class GameEngine:
             return {
                 "status": "waiting",
                 "message": f"Competition card: Need demand info ({demand_type.replace('_', ' ')}).",
+                "input_needed": self.state.pending_input,
+            }
+
+        elif action_type == "check_stacked_competition":
+            top = self.state.action_deck.peek()
+            if not top or top.card_type not in (CardType.WARM, CardType.COOL):
+                # No longer a competition card (e.g. after a shuffle) — skip
+                return self._process_pending_competition_actions()
+            # Show the card to the player before resolving it
+            comp_card_data = top.to_dict()
+            comp_card_data["resolved"] = False
+            comp_card_data["competition_level"] = self.state.tracks.competition.label()
+            self.state.current_competition_card = comp_card_data
+            self.state.current_front_card = comp_card_data
+            card_label = top.card_type.value.title()
+            self.state.pending_input = {
+                "type": "acknowledge_competition_card",
+                "prompt": (
+                    f"⚠️ Another {card_label} competition card (#{top.card_number}) "
+                    f"was stacked on top of the deck! Press Confirm to resolve it."
+                ),
+                "prompt_es": (
+                    f"⚠️ ¡Había otra carta de competencia {card_label} "
+                    f"(#{top.card_number}) apilada! Confirma para resolverla."
+                ),
+                "fields": [],
+            }
+            self.state.phase = GamePhase.WAITING_FOR_INPUT
+            return {
+                "status": "waiting",
+                "message": (
+                    f"Stacked {card_label} competition card #{top.card_number} "
+                    f"revealed on top of the deck. Confirm to resolve it."
+                ),
                 "input_needed": self.state.pending_input,
             }
 
@@ -1553,6 +1763,29 @@ class GameEngine:
                 self.state.log("Mass Marketeer already recruited.", "recruit_train")
                 return "Mass Marketeer already in play"
 
+        # Brand Director is unique — check availability like regular employees
+        if name == "Brand Director":
+            if self._chain_has_employee("Brand Director"):
+                self.state.log(
+                    "Brand Director already recruited. Skipping.", "recruit_train"
+                )
+                return "Brand Director: already in Chain's roster"
+            has_slot = any(s.marketeer is None for s in self.state.marketeer_slots)
+            if not has_slot:
+                self.state.log("No marketeer slot for Brand Director.", "recruit_train")
+                return "No slot for Brand Director"
+            self.state.pending_employee_checks.append(
+                {
+                    "name": "Brand Director",
+                    "type": "brand_director",
+                }
+            )
+            self.state.log(
+                "Brand Director recruitment pending availability check.",
+                "recruit_train",
+            )
+            return "Brand Director: pending availability"
+
         # Find an open marketeer slot
         for slot in self.state.marketeer_slots:
             if slot.marketeer is None:
@@ -1587,29 +1820,35 @@ class GameEngine:
         return f"No slot for {name}"
 
     def _recruit_employee(self, name: str) -> str:
-        """Recruit an employee to the Employee Pile (or Marketeer spot for Brand Director)."""
+        """Recruit an employee to the Employee Pile (or Marketeer spot for Brand Director).
+
+        All employees and Brand Directors are unique — the Chain cannot recruit
+        duplicates. If the Chain doesn't already have the employee, a prompt is
+        queued to ask the player whether the employee is available.
+        """
+        # Check if Chain already has this employee
+        if self._chain_has_employee(name):
+            self.state.log(f"{name} already recruited. Skipping.", "recruit_train")
+            return f"{name}: already in Chain's roster"
+
         if name == "Brand Director":
-            # Goes in marketeer spot instead
-            for slot in self.state.marketeer_slots:
-                if slot.marketeer is None:
-                    slot.marketeer = "Brand Director"
-                    self.state.log(
-                        f"Brand Director placed in Marketeer slot {slot.slot_number}.",
-                        "recruit_train",
-                    )
-                    return (
-                        f"Recruited: Brand Director (marketeer slot {slot.slot_number})"
-                    )
-            self.state.log("No marketeer slot for Brand Director.", "recruit_train")
-            return "No slot for Brand Director"
+            # Check if there's an open marketeer slot
+            has_slot = any(s.marketeer is None for s in self.state.marketeer_slots)
+            if not has_slot:
+                self.state.log("No marketeer slot for Brand Director.", "recruit_train")
+                return "No slot for Brand Director"
 
-        self.state.employee_pile.append(name)
-        self.state.log(f"Recruited {name} to Employee Pile.", "recruit_train")
-
-        # Track-based milestones are checked centrally via _check_track_milestones()
-        # which is called after every track movement.
-
-        return f"Recruited: {name}"
+        # Queue availability check — actual recruitment happens on confirmation
+        self.state.pending_employee_checks.append(
+            {
+                "name": name,
+                "type": "brand_director" if name == "Brand Director" else "employee",
+            }
+        )
+        self.state.log(
+            f"{name} recruitment pending availability check.", "recruit_train"
+        )
+        return f"{name}: pending availability"
 
     # ─── Get Food & Drinks ───────────────────────────────────────────────
 
@@ -1911,36 +2150,10 @@ class GameEngine:
         ]
 
         if not new_marketeers:
-            # No new campaigns to set up
-            campaigns = []
-            for slot in self.state.marketeer_slots:
-                if slot.marketeer and slot.is_busy:
-                    left = (
-                        "∞" if slot.campaigns_left == -1 else f"{slot.campaigns_left}"
-                    )
-                    campaigns.append(
-                        f"{slot.marketeer} (slot {slot.slot_number}): "
-                        f"{slot.market_item}, campaign #{slot.campaign_number}, "
-                        f"{left} left"
-                    )
-            if self.state.mass_marketeer:
-                campaigns.append("Mass Marketeer: additional marketing campaign")
-                self.state.log(
-                    "Mass Marketeer runs additional marketing campaign phase.",
-                    "marketing",
-                )
-
+            # No new campaigns to set up — skip silently
             self.state.phase = GamePhase.GET_FOOD
             hint = self._worktime_turn_hint()
-            msg = (
-                "Initiate Marketing: "
-                + (
-                    " | ".join(campaigns)
-                    if campaigns
-                    else "No new or active campaigns."
-                )
-                + hint
-            )
+            msg = "Initiate Marketing: No new marketeers to initiate." + hint
             return {"status": "ok", "message": msg, "next_phase": "get_food"}
 
         # Build prompt fields — one campaign number field per new marketeer
@@ -2098,6 +2311,16 @@ class GameEngine:
     def _do_lobby(self) -> dict:
         """LOBBY phase: place road/park if star on card."""
         self.state.log(f"=== LOBBY ===", "phase")
+
+        # Lobby action requires the Lobbyists module expansion
+        if not self.state.modules.get("lobbyists"):
+            self.state.phase = GamePhase.EXPAND_CHAIN
+            hint = self._worktime_turn_hint()
+            return {
+                "status": "ok",
+                "message": "Lobbyists module not active. Skipping LOBBY." + hint,
+                "next_phase": "expand_chain",
+            }
 
         stars = getattr(self.state, "pending_stars", [])
         back = (
@@ -2375,15 +2598,27 @@ class GameEngine:
                     continue
                 slot.campaigns_left -= 1
                 if slot.campaigns_left <= 0:
+                    expired_name = slot.marketeer
                     self.state.log(
-                        f"{slot.marketeer} (slot {slot.slot_number}) campaign expired! "
+                        f"{expired_name} (slot {slot.slot_number}) campaign expired! "
                         f"Marketing {slot.market_item}, campaign #{slot.campaign_number}. "
                         f"Marketeer removed.",
                         "marketing_campaigns",
                     )
-                    msgs.append(
-                        f"{slot.marketeer} (slot {slot.slot_number}) campaign expired — removed"
-                    )
+                    # Brand Director goes to employee pile when campaign expires
+                    if expired_name == "Brand Director":
+                        self.state.employee_pile.append("Brand Director")
+                        self.state.log(
+                            f"Brand Director placed in employee pile.",
+                            "marketing_campaigns",
+                        )
+                        msgs.append(
+                            f"{expired_name} (slot {slot.slot_number}) campaign expired — moved to employee pile"
+                        )
+                    else:
+                        msgs.append(
+                            f"{expired_name} (slot {slot.slot_number}) campaign expired — removed"
+                        )
                     slot.marketeer = None
                     slot.is_busy = False
                     slot.market_item = None

@@ -427,22 +427,37 @@ class Tracks:
 class Inventory:
     """Food & drink inventory — Fridge & Freezer mechanic.
 
-    Each item is tracked as a single count 0-10.
+    Each item is tracked as a single count 0-20 during a turn.
     The physical mat has two rows of 5 slots:
       Bottom row: positions 1-5
       Top row:    positions 6-10
     Inventory Drop (-5): items on the top row (count ≥ 6) lose 5.
     Inventory Boost (+5): items on the bottom row (count 1-5) gain 5.
-    Cap: max 10 per item (coffee is exempt).
+    At cleanup, inventory is capped to 10 per item (coffee is exempt).
     """
 
     items: dict = field(default_factory=lambda: {item.value: 0 for item in FoodItem})
-    MAX_PER_ITEM = 10
+    delta: dict = field(
+        default_factory=lambda: {
+            item.value: {"gained": 0, "lost": 0} for item in FoodItem
+        }
+    )
+    MAX_PER_ITEM = 20
+    CLEANUP_CAP = 10
+
+    def reset_delta(self):
+        """Reset per-turn change tracking."""
+        self.delta = {item.value: {"gained": 0, "lost": 0} for item in FoodItem}
 
     def add(self, item: str, amount: int):
         """Add amount, capped at MAX_PER_ITEM."""
         if item in self.items:
-            self.items[item] = min(self.items[item] + amount, self.MAX_PER_ITEM)
+            actual = (
+                min(self.items[item] + amount, self.MAX_PER_ITEM) - self.items[item]
+            )
+            self.items[item] += actual
+            if item in self.delta:
+                self.delta[item]["gained"] += actual
 
     def remove(self, item: str, amount: int) -> int:
         """Remove up to amount. Returns amount actually removed."""
@@ -450,6 +465,8 @@ class Inventory:
             return 0
         removed = min(self.items[item], amount)
         self.items[item] -= removed
+        if item in self.delta:
+            self.delta[item]["lost"] += removed
         return removed
 
     def total(self, item: str) -> int:
@@ -465,6 +482,9 @@ class Inventory:
             if count >= 6:
                 old = count
                 self.items[item] = count - 5
+                dropped = old - self.items[item]
+                if item in self.delta:
+                    self.delta[item]["lost"] += dropped
                 msgs.append(f"{item}: {old}→{self.items[item]}")
         return msgs
 
@@ -478,23 +498,32 @@ class Inventory:
             if 1 <= count <= 5:
                 old = count
                 self.items[item] = count + 5
+                boosted = self.items[item] - old
+                if item in self.delta:
+                    self.delta[item]["gained"] += boosted
                 msgs.append(f"{item}: {old}→{self.items[item]}")
         return msgs
 
     def cap_inventory(self) -> list[str]:
-        """Enforce max 10 per item (excluding coffee). Returns descriptions."""
+        """Enforce cleanup cap of 10 per item (excluding coffee). Returns descriptions."""
         msgs = []
         for item_name, count in self.items.items():
-            if count > self.MAX_PER_ITEM and item_name != FoodItem.COFFEE.value:
+            if count > self.CLEANUP_CAP and item_name != FoodItem.COFFEE.value:
                 old = count
-                self.items[item_name] = self.MAX_PER_ITEM
-                msgs.append(f"{item_name}: {old}→{self.MAX_PER_ITEM}")
+                self.items[item_name] = self.CLEANUP_CAP
+                lost = old - self.CLEANUP_CAP
+                if item_name in self.delta:
+                    self.delta[item_name]["lost"] += lost
+                msgs.append(f"{item_name}: {old}→{self.CLEANUP_CAP}")
         return msgs
 
     def clear_item(self, item: str):
         """Remove all of a specific item (cool competition effect)."""
         if item in self.items:
+            lost = self.items[item]
             self.items[item] = 0
+            if lost > 0 and item in self.delta:
+                self.delta[item]["lost"] += lost
 
     def to_dict(self) -> dict:
         """Serialise for API / UI. Provides row info for display."""
@@ -502,11 +531,14 @@ class Inventory:
         for item, count in self.items.items():
             top_row = max(0, count - 5) if count > 5 else 0
             bottom_row = min(count, 5)
+            d = self.delta.get(item, {"gained": 0, "lost": 0})
             result[item] = {
                 "count": count,
                 "top": top_row,
                 "bottom": bottom_row,
                 "total": count,
+                "gained": d["gained"],
+                "lost": d["lost"],
             }
         return result
 
@@ -641,6 +673,11 @@ class GameState:
     # Phase to restore after milestone confirmation flow completes
     phase_before_milestone: Optional[str] = None
 
+    # Employees/Brand Director pending availability confirmation from the player
+    pending_employee_checks: list[dict] = field(default_factory=list)
+    # Phase to restore after employee availability flow completes
+    phase_before_employee_check: Optional[str] = None
+
     # Queued competition card actions needing user interaction (demand prompts, restaurant placement)
     pending_competition_actions: list[dict] = field(default_factory=list)
     # Phase to resume after all competition actions are processed
@@ -659,6 +696,9 @@ class GameState:
 
     # Bank state
     bank_breaks: int = 0
+    bank_reserve_card: Optional[str] = (
+        None  # "100", "200", or "300" — chosen at setup, hidden until first break
+    )
 
     # Turn log
     action_log: list[dict] = field(default_factory=list)
@@ -668,6 +708,9 @@ class GameState:
 
     # Player input pending
     pending_input: Optional[dict] = None  # {type, prompt, options}
+
+    # Next phase to transition to after input was resolved (delays advance until user clicks)
+    next_phase_after_input: Optional[str] = None
 
     # First turn flag
     is_first_turn: bool = True
@@ -760,6 +803,9 @@ class GameState:
             "current_back_card": self.current_back_card,
             "current_competition_card": self.current_competition_card,
             "bank_breaks": self.bank_breaks,
+            "bank_reserve_card": (
+                self.bank_reserve_card if self.bank_breaks > 0 else None
+            ),
             "action_log": self.action_log[-50:],  # Last 50 entries
             "pending_input": self.pending_input,
             "is_first_turn": self.is_first_turn,
@@ -776,4 +822,5 @@ class GameState:
             "chain_movie_star": self.chain_movie_star,
             "turn_order": self.turn_order,
             "display_phase": self.display_phase or self.phase.value,
+            "next_phase_after_input": self.next_phase_after_input,
         }

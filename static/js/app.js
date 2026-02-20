@@ -21,6 +21,159 @@ const API = {
     },
 };
 
+// ─── Pre-set Scenarios ─────────────────────────────────────────────────
+
+const SCENARIOS = [
+    // {
+    //     id: "cool_original",
+    //     name: "Cool Original",
+    //     name_es: "Original Clásico",
+    //     emoji: "❄️",
+    //     desc: "Base game only — no modules",
+    //     desc_es: "Solo juego base — sin módulos",
+    //     modules: {},
+    //     optional_rules: {},
+    // },
+    // {
+    //     id: "new_milestones",
+    //     name: "New Milestones",
+    //     name_es: "Nuevos Hitos",
+    //     emoji: "🏆",
+    //     desc: "Milestones module only",
+    //     desc_es: "Solo módulo de Hitos",
+    //     modules: { milestones: true },
+    //     optional_rules: {},
+    // },
+    // {
+    //     id: "first_coffee",
+    //     name: "Your First Cup of Coffee",
+    //     name_es: "Tu Primera Taza de Café",
+    //     emoji: "☕",
+    //     desc: "Coffee module",
+    //     desc_es: "Módulo de Café",
+    //     modules: { coffee: true },
+    //     optional_rules: {},
+    // },
+    {
+        id: "korean_city",
+        name: "Korean City",
+        name_es: "Ciudad Coreana",
+        emoji: "🫰",
+        desc: "New Districts + Kimchi",
+        desc_es: "Nuevos Distritos + Kimchi",
+        modules: { new_districts: true, kimchi: true },
+        optional_rules: {},
+    },
+    {
+        id: "nightlife",
+        name: "Nightlife",
+        name_es: "Vida Nocturna",
+        emoji: "🌙",
+        desc: "Milestones + Night Shift Managers",
+        desc_es: "Hitos + Gerentes Nocturnos",
+        modules: { milestones: true, night_shift: true },
+        optional_rules: {},
+    },
+    {
+        id: "sustenance",
+        name: "Sustenance",
+        name_es: "Sustento",
+        emoji: "🍟",
+        desc: "Coffee + Fry Chefs",
+        desc_es: "Café + Cocineros de Frito",
+        modules: { coffee: true, fry_chefs: true },
+        optional_rules: {},
+    },
+    {
+        id: "upmarket_area",
+        name: "Upmarket Area",
+        name_es: "Zona Exclusiva",
+        emoji: "🍽️",
+        desc: "Milestones + New Districts + Gourmet + Sushi",
+        desc_es: "Hitos + Nuevos Distritos + Gourmet + Sushi",
+        modules: { milestones: true, new_districts: true, gourmet: true, sushi: true },
+        optional_rules: {},
+    },
+    {
+        id: "city_builder",
+        name: "City Builder",
+        name_es: "Constructor de Ciudad",
+        emoji: "🏗️",
+        desc: "Lobbyists + New Districts + Rural Marketeer",
+        desc_es: "Lobbistas + Nuevos Distritos + Promotor Rural",
+        modules: { lobbyists: true, new_districts: true, rural_marketeer: true },
+        optional_rules: {},
+    },
+    {
+        id: "asian_fusion",
+        name: "Asian Fusion",
+        name_es: "Fusión Asiática",
+        emoji: "🥢",
+        desc: "Sushi + Kimchi + Noodle + Ketchup",
+        desc_es: "Sushi + Kimchi + Fideos + Ketchup",
+        modules: { sushi: true, kimchi: true, noodle: true, ketchup: true },
+        optional_rules: {},
+    },
+    {
+        id: "first_mover",
+        name: "First Mover",
+        name_es: "Primer Movimiento",
+        emoji: "🚀",
+        desc: "Hard Choices + Ketchup + Movie Stars + Lobbyists + Reserve Prices",
+        desc_es: "Elecciones Difíciles + Ketchup + Estrellas + Lobbistas + Precios Reserva",
+        modules: { ketchup: true, movie_stars: true, lobbyists: true, reserve_prices: true },
+        optional_rules: { hard_choices: true },
+    },
+    {
+        id: "overtime",
+        name: "Overtime",
+        name_es: "Tiempo Extra",
+        emoji: "⏰",
+        desc: "Night Shift + Mass & Rural Marketeer + New Districts + Noodle + Reserve Prices",
+        desc_es: "Nocturno + Promotores Masivo y Rural + Nuevos Distritos + Fideos + Precios Reserva",
+        modules: { night_shift: true, mass_marketeer: true, rural_marketeer: true, new_districts: true, noodle: true, reserve_prices: true },
+        optional_rules: {},
+    },
+    // {
+    //     id: "henri_lo_menu",
+    //     name: "Henri Lo Menu",
+    //     name_es: "Menú Henri Lo",
+    //     emoji: "👨‍🍳",
+    //     desc: "All modules enabled!",
+    //     desc_es: "¡Todos los módulos activados!",
+    //     modules: { coffee: true, kimchi: true, noodle: true, sushi: true, gourmet: true, mass_marketeer: true, rural_marketeer: true, night_shift: true, ketchup: true, fry_chefs: true, movie_stars: true, reserve_prices: true, lobbyists: true, new_districts: true, milestones: true },
+    //     optional_rules: {},
+    // },
+];
+
+// All module keys (for unchecking modules not in a scenario)
+const ALL_MODULE_KEYS = [
+    "coffee", "kimchi", "noodle", "sushi", "gourmet",
+    "mass_marketeer", "rural_marketeer", "night_shift",
+    "ketchup", "fry_chefs", "movie_stars", "reserve_prices",
+    "lobbyists", "new_districts", "milestones",
+];
+const ALL_RULE_KEYS = [
+    "hard_choices", "expand_connections", "expand_6_restaurants",
+    "aggressive_setup", "aggressive_restructuring",
+];
+
+// Module key → checkbox ID mapping
+const MOD_CHECKBOX_MAP = {
+    coffee: "mod-coffee", kimchi: "mod-kimchi", noodle: "mod-noodle",
+    sushi: "mod-sushi", gourmet: "mod-gourmet",
+    mass_marketeer: "mod-mass-marketeer", rural_marketeer: "mod-rural-marketeer",
+    night_shift: "mod-night-shift", ketchup: "mod-ketchup",
+    fry_chefs: "mod-fry-chefs", movie_stars: "mod-movie-stars",
+    reserve_prices: "mod-reserve-prices", lobbyists: "mod-lobbyists",
+    new_districts: "mod-new-districts", milestones: "mod-milestones",
+};
+const RULE_CHECKBOX_MAP = {
+    hard_choices: "opt-hard-choices", expand_connections: "opt-expand-connections",
+    expand_6_restaurants: "opt-expand-6", aggressive_setup: "opt-aggressive-setup",
+    aggressive_restructuring: "opt-aggressive-restructuring",
+};
+
 // ─── State ─────────────────────────────────────────────────────────────
 
 let gameState = null;
@@ -98,6 +251,11 @@ function bindEvents() {
         });
     }
 
+    // Setup tabs
+    $("#btn-tab-individual").onclick = () => switchSetupTab("individual");
+    $("#btn-tab-scenarios").onclick = () => switchSetupTab("scenarios");
+    buildScenarioList();
+
     // Load
     $("#btn-close-load").onclick = () => hideOverlay(loadOverlay);
 
@@ -138,6 +296,61 @@ function bindEvents() {
 
 function showOverlay(el) { el.classList.remove("hidden"); }
 function hideOverlay(el) { el.classList.add("hidden"); }
+
+// ─── Setup Tabs & Scenarios ────────────────────────────────────────────
+
+function switchSetupTab(tab) {
+    const indView = $("#individual-view");
+    const sceView = $("#scenario-view");
+    const btnInd = $("#btn-tab-individual");
+    const btnSce = $("#btn-tab-scenarios");
+
+    if (tab === "scenarios") {
+        indView.classList.add("hidden");
+        sceView.classList.remove("hidden");
+        btnInd.classList.remove("active");
+        btnSce.classList.add("active");
+    } else {
+        sceView.classList.add("hidden");
+        indView.classList.remove("hidden");
+        btnSce.classList.remove("active");
+        btnInd.classList.add("active");
+    }
+}
+
+function buildScenarioList() {
+    const list = $("#scenario-list");
+    if (!list) return;
+    list.innerHTML = "";
+    SCENARIOS.forEach(sc => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "scenario-btn";
+        const es = currentLang === "es";
+        btn.innerHTML = `<span class="scenario-emoji">${sc.emoji}</span>`
+            + `<span class="scenario-info">`
+            + `<strong>${es ? sc.name_es : sc.name}</strong>`
+            + `<small>${es ? sc.desc_es : sc.desc}</small>`
+            + `</span>`;
+        btn.onclick = () => applyScenario(sc);
+        list.appendChild(btn);
+    });
+}
+
+function applyScenario(sc) {
+    // Set modules
+    ALL_MODULE_KEYS.forEach(key => {
+        const cb = document.getElementById(MOD_CHECKBOX_MAP[key]);
+        if (cb) cb.checked = !!sc.modules[key];
+    });
+    // Set optional rules
+    ALL_RULE_KEYS.forEach(key => {
+        const cb = document.getElementById(RULE_CHECKBOX_MAP[key]);
+        if (cb) cb.checked = !!sc.optional_rules[key];
+    });
+    // Switch to individual view so user can review/tweak
+    switchSetupTab("individual");
+}
 
 // ─── New Game ──────────────────────────────────────────────────────────
 
@@ -399,15 +612,23 @@ function refreshUI() {
     updateLog();
 
     // Advance button — context-aware label
-    btnAdvance.textContent = getAdvanceLabel(gameState.phase);
+    const labelPhase = (gameState.phase === "waiting_for_input" && gameState.next_phase_after_input)
+        ? gameState.next_phase_after_input
+        : gameState.phase;
+    btnAdvance.textContent = getAdvanceLabel(labelPhase);
     if (gameState.phase === "game_over") {
         btnAdvance.disabled = true;
         btnAdvance.classList.remove("pulse");
     } else if (gameState.phase === "waiting_for_input") {
-        btnAdvance.disabled = true;
-        btnAdvance.classList.remove("pulse");
         if (gameState.pending_input) {
+            // Active prompt — disable Advance, show the input overlay
+            btnAdvance.disabled = true;
+            btnAdvance.classList.remove("pulse");
             showInputPrompt(gameState.pending_input);
+        } else {
+            // Input resolved but phase transition delayed — let user Advance
+            btnAdvance.disabled = false;
+            btnAdvance.classList.add("pulse");
         }
     } else {
         btnAdvance.disabled = false;
@@ -529,15 +750,19 @@ function updateInventory() {
         // Skip expansion items whose module is disabled
         if (!coreItems.has(item) && modules[item] === false) return;
 
-        const inv = gameState.inventory[item] || { top: 0, bottom: 0, total: 0 };
-        const row = inv.total >= 6 ? "top" : (inv.total >= 1 ? "bottom" : "");
+        const inv = gameState.inventory[item] || { top: 0, bottom: 0, total: 0, gained: 0, lost: 0 };
         const div = document.createElement("div");
-        div.className = "inv-item" + (inv.total === 0 ? " empty" : "") + (row === "top" ? " top-row" : "");
+        const gained = inv.gained || 0;
+        const lost = inv.lost || 0;
+        let deltaHtml = "";
+        if (gained > 0) deltaHtml += `<span class="inv-delta gain">▲${gained}</span>`;
+        if (lost > 0)   deltaHtml += `<span class="inv-delta loss">▼${lost}</span>`;
+        div.className = "inv-item" + (inv.total === 0 ? " empty" : "");
         div.innerHTML = `
             <div class="inv-icon">${FOOD_ICONS[item] || "📦"}</div>
             <div class="inv-name">${t(item)}</div>
             <div class="inv-count">${inv.total}</div>
-            <div class="inv-detail">${row ? (row === "top" ? "▲" : "▼") + " row" : ""}</div>
+            <div class="inv-delta-row">${deltaHtml}</div>
         `;
         grid.appendChild(div);
     });
@@ -631,12 +856,14 @@ function updateRestaurants() {
 }
 
 function updateChainCash() {
-    const container = $("#chain-cash-info");
-    if (!container) return;
+    const totalEl = $("#chain-cash-total");
+    const turnEl = $("#chain-cash-turn");
+    if (!totalEl) return;
     const total = gameState.chain_total_cash || 0;
     const thisTurn = gameState.chain_cash_this_turn || 0;
-    const turnLabel = thisTurn > 0 ? ` (${t("this_turn")}: $${thisTurn})` : "";
-    container.innerHTML = `<span class="tag">$${total}${turnLabel}</span>`;
+    totalEl.textContent = `$${total}`;
+    turnEl.textContent = thisTurn > 0 ? `+$${thisTurn} ${t("this_turn")}` : "";
+    turnEl.style.display = thisTurn > 0 ? "block" : "none";
 }
 
 function updateDeckInfo() {
@@ -855,7 +1082,16 @@ async function doBankBreak() {
     hideOverlay(menuOverlay);
     const result = await API.post("/api/game/input", { type: "bank_break" });
     await refreshState();
-    setStatus(result.message);
+    if (result.reveal_reserve_card) {
+        $("#reserve-reveal-img").src = `/static/cards/reserve${result.reveal_reserve_card}.jpg`;
+        showOverlay($("#reserve-reveal-overlay"));
+    } else {
+        setStatus(result.message);
+    }
+}
+
+function closeReserveReveal() {
+    hideOverlay($("#reserve-reveal-overlay"));
 }
 
 function toggleMode() {
