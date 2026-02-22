@@ -443,6 +443,43 @@ body {
 .comp-card-slot .card-label.warm-label { background: rgba(232, 93, 58, 0.5); color: #fff; }
 .comp-card-slot .card-label.cool-label { background: rgba(58, 142, 232, 0.5); color: #fff; }
 
+/* Competition card resolution summary */
+.comp-resolution-summary {
+    font-size: 0.75rem;
+    padding: 6px 8px;
+    margin-top: 4px;
+    border-radius: var(--radius);
+    line-height: 1.3;
+    text-align: center;
+}
+.comp-resolution-summary.resolved {
+    background: rgba(72, 187, 120, 0.15);
+    color: #48bb78;
+    border-left: 3px solid #48bb78;
+}
+.comp-resolution-summary.not-resolved {
+    background: rgba(160, 160, 160, 0.12);
+    color: #a0a0a0;
+    border-left: 3px solid #a0a0a0;
+}
+
+/* Competition step prompt in input overlay */
+.comp-step-prompt {
+    white-space: pre-line;
+    line-height: 1.5;
+    padding: 12px;
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+}
+.comp-step-prompt.comp-prompt-match {
+    background: rgba(232, 93, 58, 0.1);
+    border-left: 4px solid #e85d3a;
+}
+.comp-step-prompt.comp-prompt-nomatch {
+    background: rgba(160, 160, 160, 0.1);
+    border-left: 4px solid #888;
+}
+
 /* Card zoom overlay */
 #card-overlay {
     cursor: pointer;
@@ -864,7 +901,50 @@ body {
 }
 
 .tag.milestone { border: 1px solid var(--accent2); color: var(--accent2); }
+.tag.milestone-expired {
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+.tag.milestone-unavailable {
+    border: 1px solid var(--text-muted);
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+.tag.milestone-available {
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    opacity: 0.8;
+}
 .tag.restaurant { border: 1px solid var(--green); color: var(--green); }
+
+/* ─── Milestone Roundup Prompt ───────────────────────────────── */
+.milestone-roundup-section {
+    margin-bottom: 12px;
+}
+.milestone-roundup-heading {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 6px 0;
+    line-height: 1.4;
+}
+.milestone-roundup-chain .milestone-roundup-heading {
+    color: var(--accent2);
+    font-weight: 600;
+}
+.milestone-roundup-option {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: background 0.15s, border-color 0.15s;
+}
+.milestone-roundup-option:has(input:checked) {
+    background: color-mix(in srgb, var(--accent2) 12%, transparent);
+    border-color: var(--accent2);
+}
+.chain-claimed-option {
+    border-color: color-mix(in srgb, var(--accent2) 40%, var(--border));
+}
 
 .deck-info {
     font-size: 0.8rem;

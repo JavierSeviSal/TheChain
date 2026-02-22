@@ -152,8 +152,11 @@ def _serialize_full_state(state: GameState) -> dict:
         "mass_marketeer": state.mass_marketeer,
         "employee_pile": state.employee_pile.copy(),
         "milestones_claimed": state.milestones_claimed.copy(),
+        "milestones_claimed_this_round": state.milestones_claimed_this_round.copy(),
         "milestones_unavailable": state.milestones_unavailable.copy(),
         "pending_milestone_checks": state.pending_milestone_checks.copy(),
+        "milestones_expired": state.milestones_expired.copy(),
+        "milestones_turn2_tokens": state.milestones_turn2_tokens.copy(),
         "phase_before_milestone": state.phase_before_milestone,
         "pending_employee_checks": [c.copy() for c in state.pending_employee_checks],
         "phase_before_employee_check": state.phase_before_employee_check,
@@ -281,8 +284,11 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.mass_marketeer = data.get("mass_marketeer", False)
     state.employee_pile = data.get("employee_pile", [])
     state.milestones_claimed = data.get("milestones_claimed", [])
+    state.milestones_claimed_this_round = data.get("milestones_claimed_this_round", [])
     state.milestones_unavailable = data.get("milestones_unavailable", [])
     state.pending_milestone_checks = data.get("pending_milestone_checks", [])
+    state.milestones_expired = data.get("milestones_expired", [])
+    state.milestones_turn2_tokens = data.get("milestones_turn2_tokens", [])
     state.phase_before_milestone = data.get("phase_before_milestone")
     state.pending_employee_checks = data.get("pending_employee_checks", [])
     state.phase_before_employee_check = data.get("phase_before_employee_check")

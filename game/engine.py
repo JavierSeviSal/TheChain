@@ -19,6 +19,20 @@ from .models import (
     MARKETEER_DURATIONS,
     FoodItem,
     CORE_FOOD_ITEMS,
+    BASE_MILESTONES,
+    EXPANSION_MILESTONES,
+    MODULE_MILESTONES,
+    EXPANSION_TURN2_EXPIRY,
+    BASE_TO_EXPANSION_MAP,
+    CAMPAIGN_TYPE_MILESTONES,
+    MARKETEER_MILESTONE_MAP,
+    SOLD_ITEM_MILESTONES,
+    PRODUCED_ITEM_MILESTONES,
+    DRINK_ITEMS,
+    get_campaign_type,
+    get_valid_campaign_numbers,
+    get_active_milestones,
+    is_milestone_in_active_set,
 )
 from .cards import create_all_decks
 
@@ -104,6 +118,23 @@ class GameEngine:
         # Secretly pick one of the three bank reserve cards (revealed on first bank break)
         self.state.bank_reserve_card = random.choice(["100", "200", "300"])
 
+        # Initialize milestone system based on active modules
+        if self.state.modules.get("milestones"):
+            self.state.milestones_turn2_tokens = list(EXPANSION_TURN2_EXPIRY)
+            self.state.log(
+                "Expansion Milestones active. Turn-2 tokens placed on: "
+                + ", ".join(sorted(EXPANSION_TURN2_EXPIRY)),
+                "setup",
+            )
+        else:
+            self.state.milestones_turn2_tokens = []
+
+        active_ms = get_active_milestones(self.state.modules)
+        ms_type = "Expansion" if self.state.modules.get("milestones") else "Base"
+        self.state.log(
+            f"Milestone set: {ms_type} ({len(active_ms)} milestones)", "setup"
+        )
+
         self.state.log("New game started!", "setup")
         self.state.log(
             f"Modules: {', '.join(k for k, v in self.state.modules.items() if v)}",
@@ -118,37 +149,52 @@ class GameEngine:
 
     # ─── Phase execution ─────────────────────────────────────────────────
 
-    # Human-readable milestone labels (English, Spanish)
+    # Human-readable milestone labels — built dynamically from milestone definitions
+    @staticmethod
+    def _build_milestone_labels() -> dict[str, tuple[str, str]]:
+        """Build a dict of milestone_key -> (en_label, es_label) from all milestone sets."""
+        labels = {}
+        for m in BASE_MILESTONES + EXPANSION_MILESTONES + MODULE_MILESTONES:
+            labels[m["key"]] = (m["label_en"], m["label_es"])
+        return labels
+
     MILESTONE_LABELS = {
-        "first_to_train": ("First to Train Someone", "Primero en Entrenar a Alguien"),
-        "first_to_hire_3": (
-            "First to Hire 3 People in 1 Turn",
-            "Primero en Contratar 3 en 1 Turno",
-        ),
-        "first_to_lower_prices": (
-            "First to Lower Prices",
-            "Primero en Bajar Precios",
-        ),
-        "first_to_have_waitress": (
-            "First to Have a Waitress",
-            "Primero en Tener Camarera",
-        ),
-        "first_to_market": ("First to Market", "Primero en Hacer Marketing"),
-        "first_to_pay_20_salary": (
-            "First to Pay $20 in Salaries",
-            "Primero en Pagar $20 en Salarios",
-        ),
-        "first_cart_operator": ("First Cart Operator", "Primer Operador de Carrito"),
-        "first_errand_boy": ("First Errand Boy", "Primer Chico de los Recados"),
-        "first_discount_manager": (
-            "First Discount Manager",
-            "Primer Gerente de Descuentos",
-        ),
-        "first_to_throw_away": (
-            "First to Throw Away Food",
-            "Primero en Tirar Comida",
-        ),
+        m["key"]: (m["label_en"], m["label_es"])
+        for m in BASE_MILESTONES + EXPANSION_MILESTONES + MODULE_MILESTONES
     }
+
+    def _milestone_skip_set(self) -> set[str]:
+        """Return the set of milestone keys that should be skipped (already resolved)."""
+        return (
+            set(self.state.milestones_claimed)
+            | set(self.state.milestones_unavailable)
+            | set(self.state.milestones_expired)
+            | set(self.state.pending_milestone_checks)  # legacy save compatibility
+        )
+
+    def _try_queue_milestone(self, key: str, log_label: str | None = None) -> bool:
+        """Auto-claim a milestone for The Chain if it's in the active set and not already resolved.
+
+        Adds the key to both milestones_claimed and milestones_claimed_this_round so the
+        end-of-round cleanup roundup can announce it to the player.
+        Returns True if the milestone was claimed.
+        """
+        if key in self._milestone_skip_set():
+            return False
+        if not is_milestone_in_active_set(key, self.state.modules):
+            return False
+        # Check chain_can_claim
+        for m in BASE_MILESTONES + EXPANSION_MILESTONES + MODULE_MILESTONES:
+            if m["key"] == key and not m.get("chain_can_claim", True):
+                return False
+        self.state.milestones_claimed.append(key)
+        self.state.milestones_claimed_this_round.append(key)
+        label = log_label or self.MILESTONE_LABELS.get(key, (key,))[0]
+        self.state.log(
+            f"Milestone auto-claimed: {label} (will be announced at cleanup).",
+            "milestone",
+        )
+        return True
 
     def _check_track_milestones(self):
         """Queue track-based milestones for user confirmation after any track movement.
@@ -161,91 +207,48 @@ class GameEngine:
         so the user can confirm whether the milestone is still available (not already
         claimed by the human player).
         """
-        skip = (
-            set(self.state.milestones_claimed)
-            | set(self.state.milestones_unavailable)
-            | set(self.state.pending_milestone_checks)
-        )
         open_slots = self.state.tracks.get_open_slots()
 
-        if open_slots >= 2 and "first_to_train" not in skip:
-            self.state.pending_milestone_checks.append("first_to_train")
-            self.state.log(
-                "Milestone triggered: First to Train Someone — awaiting confirmation.",
-                "milestone",
-            )
+        if open_slots >= 2:
+            self._try_queue_milestone("first_to_train")
 
-        if open_slots >= 3 and "first_to_hire_3" not in skip:
-            self.state.pending_milestone_checks.append("first_to_hire_3")
-            self.state.log(
-                "Milestone triggered: First to Hire 3 People in 1 Turn — awaiting confirmation.",
-                "milestone",
-            )
+        if open_slots >= 3:
+            self._try_queue_milestone("first_to_hire_3")
 
         pd_pos = self.state.tracks.price_distance.position
-        if pd_pos < 10 and "first_to_lower_prices" not in skip:
+        if pd_pos < 10:
             has_food = any(
                 count > 0
                 for item, count in self.state.inventory.items.items()
                 if _is_item_available(item, self.state.modules)
             )
             if has_food:
-                self.state.pending_milestone_checks.append("first_to_lower_prices")
-                self.state.log(
-                    "Milestone triggered: First to Lower Prices — awaiting confirmation.",
-                    "milestone",
-                )
+                self._try_queue_milestone("first_to_lower_prices")
 
     def _prompt_pending_milestones(self, result: dict) -> dict:
-        """If milestones are pending confirmation, intercept the result with a prompt.
+        """Legacy milestone interrupt — no longer used for mid-round confirmation.
 
-        Only intercepts when the result is not already 'waiting' or 'game_over'.
-        Saves the current phase so it can be restored after all milestones are confirmed.
+        The milestone system now auto-claims for The Chain and presents a single
+        roundup prompt at the end of cleanup.  Any milestones that ended up in
+        pending_milestone_checks from an older save are silently migrated into
+        milestones_claimed + milestones_claimed_this_round here so they appear
+        in the cleanup roundup.
         """
-        if not self.state.pending_milestone_checks:
-            return result
-        if result.get("status") in ("waiting", "game_over", "error"):
-            return result
-
-        milestone = self.state.pending_milestone_checks[0]
-        en_name, es_name = self.MILESTONE_LABELS.get(milestone, (milestone, milestone))
-
-        # Save the current phase before switching to WAITING_FOR_INPUT
-        if self.state.phase_before_milestone is None:
-            self.state.phase_before_milestone = self.state.phase.value
-
-        self.state.pending_input = {
-            "type": "milestone_confirm",
-            "milestone_key": milestone,
-            "prompt": (
-                f"🏆 Milestone triggered: {en_name}.\n"
-                f"Is this milestone still available? (Has the player NOT claimed it yet?)"
-            ),
-            "prompt_es": (
-                f"🏆 Hito activado: {es_name}.\n"
-                f"¿Está este hito disponible? (¿El jugador NO lo ha reclamado aún?)"
-            ),
-            "fields": [
-                {
-                    "name": "available",
-                    "label": "Is this milestone available for The Chain?",
-                    "label_es": "¿Está disponible para La Cadena?",
-                    "type": "select",
-                    "options": ["yes", "no"],
-                },
-            ],
-        }
-        self.state.phase = GamePhase.WAITING_FOR_INPUT
-
-        # Preserve the original phase message so the UI can show it
-        phase_message = result.get("message", "")
-
-        return {
-            "status": "waiting",
-            "message": f"Milestone check: {en_name}",
-            "phase_message": phase_message,
-            "input_needed": self.state.pending_input,
-        }
+        # Migrate any legacy pending checks left over from old saves
+        for key in list(self.state.pending_milestone_checks):
+            if (
+                key not in self.state.milestones_claimed
+                and key not in self.state.milestones_unavailable
+            ):
+                self.state.milestones_claimed.append(key)
+                if key not in self.state.milestones_claimed_this_round:
+                    self.state.milestones_claimed_this_round.append(key)
+            self.state.pending_milestone_checks.remove(key)
+        # Restore legacy phase if it was saved
+        if self.state.phase_before_milestone:
+            self.state.phase = GamePhase(self.state.phase_before_milestone)
+            self.state.phase_before_milestone = None
+        return result
 
     def _chain_has_employee(self, name: str) -> bool:
         """Check if The Chain already has this employee/Brand Director."""
@@ -339,6 +342,16 @@ class GameEngine:
             self.state.display_phase = next_p
             phase = self.state.phase  # update local var for handler lookup
 
+        # Resume competition card flow after the user reviewed the resolution
+        elif (
+            phase == GamePhase.WAITING_FOR_INPUT
+            and self.state.phase_after_competition is not None
+            and self.state.pending_input is None
+        ):
+            result = self._resume_after_competition()
+            result = self._prompt_pending_employee_checks(result)
+            return self._prompt_pending_milestones(result)
+
         # Track the phase being executed for display purposes
         # (handlers transition state.phase to the NEXT phase, but the UI
         # should show the phase that is currently running)
@@ -376,11 +389,11 @@ class GameEngine:
     _AUTO_ADVANCE_INPUTS = {
         "first_restaurant_placed",
         "player_first_restaurant_placed",
-        "milestone_confirm",
+        "milestone_confirm",  # legacy
+        "milestone_player_roundup",
         "employee_available_confirm",
         "acknowledge",
         "bank_break",
-        "acknowledge_competition_card",
     }
 
     def process_input(self, input_data: dict) -> dict:
@@ -454,6 +467,12 @@ class GameEngine:
             self.state.chain_cash_this_turn = chain_earned
             self.state.chain_total_cash += chain_earned
 
+            # Milestone: first to have $20 / $100 (Base milestones)
+            if self.state.chain_total_cash >= 20:
+                self._try_queue_milestone("first_to_have_20")
+            if self.state.chain_total_cash >= 100:
+                self._try_queue_milestone("first_to_have_100")
+
             # Competition adjustment
             if chain_earned > player_earned:
                 old = self.state.tracks.competition
@@ -500,11 +519,27 @@ class GameEngine:
                     removed = self.state.inventory.remove(key, qty)
                     if removed > 0:
                         sold_msgs.append(f"{key} ×{removed}")
+                        # Milestone: first item sold (Expansion milestones)
+                        if key in SOLD_ITEM_MILESTONES:
+                            self._try_queue_milestone(SOLD_ITEM_MILESTONES[key])
 
             if sold_msgs:
                 self.state.log(f"Sold: {', '.join(sold_msgs)}", "dinnertime")
             else:
                 self.state.log("No items sold from inventory.", "dinnertime")
+
+            # Ketchup module milestone: Someone Sells your Demand
+            # Triggers when the player earns money AND The Chain has active marketing campaigns
+            if self.state.modules.get("ketchup"):
+                player_earned = (
+                    self.state.pending_input.get("player_earned", 0)
+                    if self.state.pending_input
+                    else 0
+                )
+                # Check using chain_cash_this_turn > 0 as a proxy for Chain having campaigns
+                has_campaigns = any(s.is_busy for s in self.state.marketeer_slots)
+                if has_campaigns:
+                    self._try_queue_milestone("someone_sells_demand")
 
             self.state.phase = GamePhase.PAYDAY
             return {
@@ -525,6 +560,13 @@ class GameEngine:
         elif input_type == "competition_restaurant_placed":
             # Restaurant placed from competition card effect
             tile = input_data.get("tile", 1)
+            if len(self.state.restaurants) >= self.state.max_restaurants:
+                self.state.log(
+                    "Competition card: max restaurants already reached, placement skipped.",
+                    "competition",
+                )
+                self.state.pending_input = None
+                return self._resume_after_competition()
             self.state.restaurants.append(
                 {"tile": tile, "position": input_data.get("position", "")}
             )
@@ -568,30 +610,61 @@ class GameEngine:
 
         elif input_type == "acknowledge_competition_card":
             self.state.pending_input = None
-            # Resolve the stacked competition card the player was just shown
+            resolution_detail = ""
+            # Resolve the competition card the player was just shown
             top = self.state.action_deck.peek()
             if top and top.card_type in (CardType.WARM, CardType.COOL):
+                card_label = top.card_type.value.upper()
+                card_number = top.card_number
                 msg = self._check_resolve_competition(top)
-                self.state.log(
-                    f"Resolved stacked competition card: {msg}", "competition"
-                )
+                self.state.log(f"Resolved competition card: {msg}", "competition")
+                comp_data = self.state.current_competition_card or {}
+                was_resolved = comp_data.get("resolved", False)
+                if was_resolved:
+                    resolution_detail = (
+                        f"{card_label} Competition Card #{card_number} resolved: {msg} "
+                        f"Card placed under {card_label} deck."
+                    )
+                else:
+                    resolution_detail = (
+                        f"{card_label} Competition Card #{card_number}: "
+                        f"not matched. Placed face down under the Action Deck."
+                    )
                 # If yet another competition card is on top, queue it
                 next_top = self.state.action_deck.peek()
                 if next_top and next_top.card_type in (CardType.WARM, CardType.COOL):
-                    self.state.pending_competition_actions.insert(
-                        0, {"action": "check_stacked_competition"}
+                    self.state.pending_competition_actions.append(
+                        {"action": "check_stacked_competition"}
                     )
                 final_top = self.state.action_deck.peek()
                 if final_top:
                     self.state.current_front_card = final_top.to_dict()
-            return self._resume_after_competition()
+
+            # Pause here so the user can review the resolution details.
+            # The Advance button will call _resume_after_competition()
+            # to continue with any remaining cards or the next phase.
+            self.state.phase = GamePhase.WAITING_FOR_INPUT
+            # pending_input stays None → advance button is enabled
+            return {
+                "status": "ok",
+                "message": resolution_detail or "Competition card processed.",
+                "competition_resolution": resolution_detail,
+                "current_front_card": self.state.current_front_card,
+                "current_competition_card": self.state.current_competition_card,
+            }
 
         elif input_type == "restaurant_placed":
             tile = input_data.get("tile", 1)
+            if len(self.state.restaurants) >= self.state.max_restaurants:
+                self.state.log("Max restaurants reached. Placement skipped.", "expand")
+                self.state.pending_input = None
+                return self._continue_after_stars()
             self.state.restaurants.append(
                 {"tile": tile, "position": input_data.get("position", "")}
             )
             self.state.log(f"New restaurant placed on tile {tile}.", "expand")
+            # Milestone: first new restaurant (Expansion milestone)
+            self._try_queue_milestone("first_new_restaurant")
             self.state.pending_input = None
             return self._continue_after_stars()
 
@@ -635,6 +708,52 @@ class GameEngine:
 
             return {"status": "ok", "message": msg}
 
+        elif input_type == "milestone_player_roundup":
+            # End-of-round milestone reconciliation.
+            # joint_claims  — chain-claimed milestones the player ALSO claimed (no X token)
+            # player_claims — available milestones the player claimed independently
+            joint_claims = input_data.get("chain_jointly_claimed", [])
+            player_claims = input_data.get("player_claimed", [])
+
+            summary_parts = []
+
+            for key in player_claims:
+                en_name, _ = self.MILESTONE_LABELS.get(key, (key, key))
+                if (
+                    key not in self.state.milestones_unavailable
+                    and key not in self.state.milestones_claimed
+                ):
+                    self.state.milestones_unavailable.append(key)
+                    self.state.log(
+                        f"Milestone claimed by player: {en_name}.", "milestone"
+                    )
+                    summary_parts.append(f"👤 {en_name}")
+
+            for key in joint_claims:
+                en_name, _ = self.MILESTONE_LABELS.get(key, (key, key))
+                self.state.log(
+                    f"Milestone joint claim: {en_name} (both Chain and player).",
+                    "milestone",
+                )
+                summary_parts.append(f"🤝 {en_name}")
+
+            # Announce chain-only claims (ones the chain claimed but player did not)
+            for key in self.state.milestones_claimed_this_round:
+                if key not in joint_claims:
+                    en_name, _ = self.MILESTONE_LABELS.get(key, (key, key))
+                    summary_parts.append(f"🏆 {en_name} (Chain only — place X token)")
+
+            self.state.milestones_claimed_this_round.clear()
+            self.state.pending_input = None
+
+            if summary_parts:
+                msg = "Milestone roundup: " + " | ".join(summary_parts)
+            else:
+                msg = "Milestone roundup: no changes."
+
+            self.state.phase = GamePhase.RESTRUCTURING
+            return {"status": "ok", "message": msg, "next_phase": "restructuring"}
+
         elif input_type == "employee_available_confirm":
             check = (self.state.pending_input or {}).get("employee_check", {})
             name = check.get("name", "")
@@ -657,6 +776,9 @@ class GameEngine:
                                 "recruit_train",
                             )
                             placed = True
+                            # Milestone: Brand Director used (Expansion)
+                            self._try_queue_milestone("first_brand_director_used")
+                            self._try_queue_milestone("first_marketeer_used")
                             break
                     if not placed:
                         self.state.log(
@@ -800,26 +922,36 @@ class GameEngine:
                 "restructuring",
             )
 
-        # STEP 2: Competition Adjustment
-        result_msgs = self._competition_adjustment()
+        # ── Build structured step messages ──
+        step_msgs = []
 
-        # STEP 3: Resolve only the first competition card on top (if any).
-        # Any further stacked competition cards are queued so the player
-        # sees and acknowledges each one individually.
+        # Step 1 summary
+        step1 = f"STEP 1 — Flipped card #{top_card.card_number}."
+        if next_card:
+            step1 += f" Next card: #{next_card.card_number}."
+        step_msgs.append(step1)
+
+        # STEP 2: Competition Adjustment
+        adj_msgs = self._competition_adjustment()
+        step2 = "STEP 2 — Competition Adjustment: " + " ".join(adj_msgs)
+        step_msgs.append(step2)
+
+        # STEP 3: Queue each competition card on top for individual
+        # acknowledgment so the user sees and confirms one at a time.
         top_after = self.state.action_deck.peek()
         if top_after and top_after.card_type in (CardType.WARM, CardType.COOL):
-            resolved_msg = self._check_resolve_competition(top_after)
-            if resolved_msg:
-                result_msgs.append(resolved_msg)
-            # If there is still another competition card on top, queue it
-            next_top = self.state.action_deck.peek()
-            if next_top and next_top.card_type in (CardType.WARM, CardType.COOL):
-                self.state.pending_competition_actions.insert(
-                    0, {"action": "check_stacked_competition"}
-                )
+            self.state.pending_competition_actions.append(
+                {"action": "check_stacked_competition"}
+            )
+            card_label = top_after.card_type.value.upper()
+            step_msgs.append(
+                f"STEP 3 — A {card_label} Competition Card (#{top_after.card_number}) "
+                f"is on top of the Action Deck. Resolving next…"
+            )
+        else:
+            step_msgs.append("STEP 3 — No competition card on top of the Action Deck.")
 
         # Update the front card to whatever is now on top
-        # (may still be a competition card if one was just queued)
         final_top = self.state.action_deck.peek()
         if final_top:
             self.state.current_front_card = final_top.to_dict()
@@ -830,10 +962,11 @@ class GameEngine:
             "recruit_train" if is_first_turn else "order_of_business"
         )
 
+        restructuring_msg = " | ".join(step_msgs)
+
         # Check if any competition card effects need user interaction
         if self.state.pending_competition_actions:
             self.state.phase_after_competition = next_after_restructuring
-            restructuring_msg = "Restructuring complete. " + " ".join(result_msgs)
             first_action = self._process_pending_competition_actions()
             if first_action:
                 first_action["phase_message"] = restructuring_msg
@@ -850,8 +983,7 @@ class GameEngine:
             self.state.phase = GamePhase.RECRUIT_TRAIN
             return {
                 "status": "ok",
-                "message": "Restructuring complete. "
-                + " ".join(result_msgs)
+                "message": restructuring_msg
                 + " Turn 1: Chain goes first (Order of Business skipped).",
                 "next_phase": "recruit_train",
                 "current_back_card": self.state.current_back_card,
@@ -861,7 +993,7 @@ class GameEngine:
         self.state.phase = GamePhase.ORDER_OF_BUSINESS
         return {
             "status": "ok",
-            "message": "Restructuring complete. " + " ".join(result_msgs),
+            "message": restructuring_msg,
             "next_phase": "order_of_business",
             "current_back_card": self.state.current_back_card,
             "current_front_card": self.state.current_front_card,
@@ -1136,12 +1268,19 @@ class GameEngine:
             # Don't resolve; place under the action deck
             self.state.action_deck.draw()
             self.state.action_deck.place_under(card)
+            card_label = card.card_type.value.upper()
+            msg = (
+                f"{card_label} Competition Card #{card.card_number} does not match "
+                f"track ({level.label()}). Placed face down under the Action Deck."
+            )
+            comp_card_data["resolution_summary"] = msg
+            self.state.current_competition_card = comp_card_data
             self.state.log(
                 f"Competition card (#{card.card_number} {card.card_type.value}) on top "
                 f"does not match track ({level.label()}). Placed under action deck.",
                 "restructuring",
             )
-            return f"Competition card not resolved (track is {level.label()})."
+            return msg
 
     def _resolve_competition_card(self, card: Card) -> str:
         """Resolve a competition card's effect.
@@ -1378,45 +1517,55 @@ class GameEngine:
             multiplier = action.get("multiplier", 1)
             food_amount = action.get("food_amount", 2)
 
-            fields = [
-                {
-                    "name": "items_with_demand",
-                    "label": "Items with demand on map",
-                    "label_es": "Items con demanda en el mapa",
-                    "type": "multiselect",
-                    "options": [
-                        fi.value
-                        for fi in FoodItem
-                        if _is_item_available(fi.value, self.state.modules)
-                    ],
-                },
+            available_items = [
+                fi.value
+                for fi in FoodItem
+                if _is_item_available(fi.value, self.state.modules)
             ]
 
             if demand_type == "most_demand":
-                fields.append(
+                # Simplified: ask only which item(s) have the MOST demand
+                fields = [
                     {
                         "name": "most_demand_items",
-                        "label": "Item(s) with MOST demand tokens (select all tied items)",
-                        "label_es": "Item(s) con MÁS fichas de demanda (selecciona todos los empatados)",
+                        "label": "Item(s) with MOST demand (select all tied)",
+                        "label_es": "Item(s) con MÁS demanda (selecciona todos los empatados)",
                         "type": "multiselect",
-                        "options": [
-                            fi.value
-                            for fi in FoodItem
-                            if _is_item_available(fi.value, self.state.modules)
-                        ],
-                    }
+                        "options": available_items,
+                    },
+                ]
+                prompt_en = (
+                    f"🍔 Competition card: Get food (most demand)!\n"
+                    f"Which item(s) have the MOST demand tokens on the map?"
+                )
+                prompt_es = (
+                    f"🍔 Carta de competencia: ¡Obtener comida (más demanda)!\n"
+                    f"¿Qué item(s) tienen MÁS fichas de demanda en el mapa?"
+                )
+            else:
+                # all_demand: ask which items have any demand
+                fields = [
+                    {
+                        "name": "items_with_demand",
+                        "label": "Items with demand on map",
+                        "label_es": "Items con demanda en el mapa",
+                        "type": "multiselect",
+                        "options": available_items,
+                    },
+                ]
+                prompt_en = (
+                    f"🍔 Competition card: Get food ({demand_type.replace('_', ' ')})!\n"
+                    f"Which food items have demand tokens on the map?"
+                )
+                prompt_es = (
+                    f"🍔 Carta de competencia: ¡Obtener comida ({demand_type.replace('_', ' ')})!\n"
+                    f"¿Qué items de comida tienen fichas de demanda en el mapa?"
                 )
 
             self.state.pending_input = {
                 "type": "competition_demand_info",
-                "prompt": (
-                    f"🍔 Competition card: Get food ({demand_type.replace('_', ' ')})!\n"
-                    f"Which food items have demand tokens on the map?"
-                ),
-                "prompt_es": (
-                    f"🍔 Carta de competencia: ¡Obtener comida ({demand_type.replace('_', ' ')})!\n"
-                    f"¿Qué items de comida tienen fichas de demanda en el mapa?"
-                ),
+                "prompt": prompt_en,
+                "prompt_es": prompt_es,
                 "demand_type": demand_type,
                 "multiplier": multiplier,
                 "food_amount": food_amount,
@@ -1434,31 +1583,88 @@ class GameEngine:
             if not top or top.card_type not in (CardType.WARM, CardType.COOL):
                 # No longer a competition card (e.g. after a shuffle) — skip
                 return self._process_pending_competition_actions()
+
+            # Pre-compute whether this card matches the current track
+            level = self.state.tracks.competition
+            card_label = top.card_type.value.upper()
+            will_resolve = False
+            if top.card_type == CardType.WARM and level in (
+                CompetitionLevel.WARM,
+                CompetitionLevel.HOT,
+            ):
+                will_resolve = True
+            elif top.card_type == CardType.COOL and level in (
+                CompetitionLevel.COOL,
+                CompetitionLevel.COLD,
+            ):
+                will_resolve = True
+            if top.card_type == CardType.WARM and self.state.optional_rules.get(
+                "aggressive_restructuring"
+            ):
+                will_resolve = True
+
             # Show the card to the player before resolving it
             comp_card_data = top.to_dict()
             comp_card_data["resolved"] = False
-            comp_card_data["competition_level"] = self.state.tracks.competition.label()
+            comp_card_data["will_resolve"] = will_resolve
+            comp_card_data["competition_level"] = level.label()
             self.state.current_competition_card = comp_card_data
             self.state.current_front_card = comp_card_data
-            card_label = top.card_type.value.title()
+
+            # Build detailed prompt explaining the match/mismatch
+            if will_resolve:
+                prompt_en = (
+                    f"📋 STEP 3 — COMPETITION CARD\n\n"
+                    f"A {card_label} Competition Card (#{top.card_number}) "
+                    f"is on top of the Action Deck.\n\n"
+                    f"Competition track is at {level.label()} → MATCHES!\n\n"
+                    f"Press Confirm to resolve this card's actions. "
+                    f"The card will then be placed face down under the "
+                    f"{card_label} Competition Card deck."
+                )
+                prompt_es = (
+                    f"📋 PASO 3 — CARTA DE COMPETENCIA\n\n"
+                    f"Una carta de competencia {card_label} (#{top.card_number}) "
+                    f"está encima del Mazo de Acción.\n\n"
+                    f"La pista de competencia está en {level.label()} → ¡COINCIDE!\n\n"
+                    f"Presiona Confirmar para resolver las acciones de esta carta. "
+                    f"La carta se colocará boca abajo bajo el mazo de cartas "
+                    f"de competencia {card_label}."
+                )
+            else:
+                prompt_en = (
+                    f"📋 STEP 3 — COMPETITION CARD\n\n"
+                    f"A {card_label} Competition Card (#{top.card_number}) "
+                    f"is on top of the Action Deck.\n\n"
+                    f"Competition track is at {level.label()} → Does NOT match.\n\n"
+                    f"Press Confirm to place this card face down under "
+                    f"the Action Deck without resolving its actions."
+                )
+                prompt_es = (
+                    f"📋 PASO 3 — CARTA DE COMPETENCIA\n\n"
+                    f"Una carta de competencia {card_label} (#{top.card_number}) "
+                    f"está encima del Mazo de Acción.\n\n"
+                    f"La pista de competencia está en {level.label()} → NO coincide.\n\n"
+                    f"Presiona Confirmar para colocar esta carta boca abajo "
+                    f"bajo el Mazo de Acción sin resolver sus acciones."
+                )
+
             self.state.pending_input = {
                 "type": "acknowledge_competition_card",
-                "prompt": (
-                    f"⚠️ Another {card_label} competition card (#{top.card_number}) "
-                    f"was stacked on top of the deck! Press Confirm to resolve it."
-                ),
-                "prompt_es": (
-                    f"⚠️ ¡Había otra carta de competencia {card_label} "
-                    f"(#{top.card_number}) apilada! Confirma para resolverla."
-                ),
+                "prompt": prompt_en,
+                "prompt_es": prompt_es,
+                "will_resolve": will_resolve,
+                "card_type": top.card_type.value,
+                "card_number": top.card_number,
                 "fields": [],
             }
             self.state.phase = GamePhase.WAITING_FOR_INPUT
             return {
                 "status": "waiting",
                 "message": (
-                    f"Stacked {card_label} competition card #{top.card_number} "
-                    f"revealed on top of the deck. Confirm to resolve it."
+                    f"STEP 3: {card_label} Competition Card #{top.card_number} "
+                    f"on top of the deck. Track: {level.label()}. "
+                    f"{'Matches — will resolve.' if will_resolve else 'Does not match — will place under deck.'}"
                 ),
                 "input_needed": self.state.pending_input,
             }
@@ -1498,14 +1704,6 @@ class GameEngine:
         items_with_demand = input_data.get("items_with_demand", [])
         most_demand_items = input_data.get("most_demand_items", [])
 
-        # If only one item has demand, it is automatically the most demanded
-        if (
-            demand_type == "most_demand"
-            and len(items_with_demand) == 1
-            and not most_demand_items
-        ):
-            most_demand_items = list(items_with_demand)
-
         added = []
         if demand_type == "all_demand":
             for item in items_with_demand:
@@ -1525,33 +1723,16 @@ class GameEngine:
                     f"Competition most demand: +{amount} {item}", "competition"
                 )
             elif len(most_demand_items) > 1:
-                # Tie — ask for house demand to break it
-                self.state.pending_input = {
-                    "type": "competition_demand_tiebreak",
-                    "prompt": f"Tie between {', '.join(most_demand_items)}! How many demand tokens on HOUSES for each?",
-                    "prompt_es": f"¡Empate entre {', '.join(most_demand_items)}! ¿Cuántas fichas de demanda en CASAS para cada uno?",
-                    "tied_items": most_demand_items,
-                    "multiplier": multiplier,
-                    "food_amount": food_amount,
-                    "fields": [
-                        {
-                            "name": f"house_demand_{item}",
-                            "label": f"Demand on houses: {item}",
-                            "label_es": f"Demanda en casas: {item}",
-                            "type": "number",
-                            "min": 0,
-                            "max": 50,
-                            "default": 0,
-                        }
-                        for item in most_demand_items
-                    ],
-                }
-                self.state.phase = GamePhase.WAITING_FOR_INPUT
-                return {
-                    "status": "waiting",
-                    "message": f"Competition card: Tie for most demand between {', '.join(most_demand_items)}.",
-                    "input_needed": self.state.pending_input,
-                }
+                # Multiple items tied — pick one randomly
+                winner = random.choice(most_demand_items)
+                amount = food_amount * multiplier
+                self.state.inventory.add(winner, amount)
+                added.append(f"+{amount} {winner}")
+                self.state.log(
+                    f"Competition most demand tie between {', '.join(most_demand_items)} "
+                    f"— random pick: {winner}",
+                    "competition",
+                )
             else:
                 self.state.log(
                     "Competition card: No most demand item selected.", "competition"
@@ -1724,27 +1905,42 @@ class GameEngine:
                         "Waitresses reached 4! Recruit highest-ranking movie star.",
                         "recruit_train",
                     )
-            # Milestone: first to have a waitress
-            if (
-                new > 0
-                and "first_to_have_waitress" not in self.state.milestones_claimed
-            ):
-                self.state.milestones_claimed.append("first_to_have_waitress")
-                self.state.log(
-                    "Milestone claimed: First to Have a Waitress!", "milestone"
-                )
+            # Milestone: first waitress (Base: first_waitress_played, Expansion: first_waitress_used)
+            if new > 0:
+                self._try_queue_milestone("first_waitress_played")
+                self._try_queue_milestone("first_waitress_used")
             self._check_track_milestones()
             return f"Waitresses: {old} → {new}"
         elif action_type == "claim_milestone":
-            if target not in self.state.milestones_claimed:
-                self.state.milestones_claimed.append(target)
-                self.state.log(f"Milestone claimed: {target}!", "milestone")
-                return f"Milestone: {target}"
-            return f"Milestone {target} already claimed"
+            # Remap card milestone targets when Expansion milestones are active
+            actual_target = target
+            if self.state.modules.get("milestones"):
+                # Expansion active: remap Base keys to Expansion equivalents
+                actual_target = BASE_TO_EXPANSION_MAP.get(target, target)
+                if actual_target == target and not is_milestone_in_active_set(
+                    target, self.state.modules
+                ):
+                    # Base-only milestone with no Expansion equivalent — skip
+                    self.state.log(
+                        f"Milestone {target} not in Expansion set. Skipped.",
+                        "milestone",
+                    )
+                    return f"Milestone {target} not in active set"
+            if is_milestone_in_active_set(actual_target, self.state.modules):
+                self._try_queue_milestone(actual_target)
+            else:
+                self.state.log(
+                    f"Milestone {actual_target} not in active set. Skipped.",
+                    "milestone",
+                )
+            return f"Milestone: {actual_target}"
         elif action_type == "get_food":
             food_amount = self.state.tracks.get_food_amount()
             self.state.inventory.add(target, food_amount)
             self.state.log(f"Get food: +{food_amount} {target}", "recruit_train")
+            # Milestone: first burger/pizza produced (Base milestones)
+            if target in PRODUCED_ITEM_MILESTONES:
+                self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[target])
             return f"GET FOOD: +{food_amount} {target}"
 
         return f"Unknown action: {action_type}"
@@ -1794,6 +1990,10 @@ class GameEngine:
                     f"Recruited {name} to Marketeer slot {slot.slot_number}.",
                     "recruit_train",
                 )
+                # Milestone: specific marketeer used (Expansion) + generic first_marketeer_used
+                if name in MARKETEER_MILESTONE_MAP:
+                    self._try_queue_milestone(MARKETEER_MILESTONE_MAP[name])
+                self._try_queue_milestone("first_marketeer_used")
                 # Gourmet Food Critic: also place 1 garden on the map
                 if name == "Gourmet Food Critic":
                     map_tiles = (
@@ -1881,6 +2081,9 @@ class GameEngine:
                         self.state.log(
                             f"+{food_amount * multiplier} {item}", "get_food"
                         )
+                        # Milestone: first burger/pizza produced
+                        if item in PRODUCED_ITEM_MILESTONES:
+                            self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[item])
                     else:
                         self.state.log(
                             f"Skipped {item} (module not in play)", "get_food"
@@ -1906,38 +2109,46 @@ class GameEngine:
             }
         else:
             # Need player input about demand on the map
-            self.state.pending_input = {
-                "type": "demand_info",
-                "prompt": f"Which food items have demand tokens on the map? (for {demand_type.replace('_', ' ')})",
-                "prompt_es": f"¿Qué items de comida tienen fichas de demanda? (para {demand_type.replace('_', ' ')})",
-                "demand_type": demand_type,
-                "multiplier": multiplier,
-                "food_amount": food_amount,
-                "fields": [
+            available_items = [
+                fi.value
+                for fi in FoodItem
+                if _is_item_available(fi.value, self.state.modules)
+            ]
+            if demand_type == "most_demand":
+                # Simplified: ask only which item(s) have the MOST demand
+                fields = [
+                    {
+                        "name": "most_demand_items",
+                        "label": "Item(s) with MOST demand (select all tied)",
+                        "label_es": "Item(s) con MÁS demanda (selecciona todos los empatados)",
+                        "type": "multiselect",
+                        "options": available_items,
+                    },
+                ]
+                prompt_en = "Which item(s) have the MOST demand tokens on the map?"
+                prompt_es = "¿Qué item(s) tienen MÁS fichas de demanda en el mapa?"
+            else:
+                # all_demand: ask which items have any demand
+                fields = [
                     {
                         "name": "items_with_demand",
                         "label": "Items with demand on map",
                         "label_es": "Items con demanda en el mapa",
                         "type": "multiselect",
-                        "options": [
-                            fi.value
-                            for fi in FoodItem
-                            if _is_item_available(fi.value, self.state.modules)
-                        ],
+                        "options": available_items,
                     },
-                    {
-                        "name": "most_demand_items",
-                        "label": "Item(s) with MOST demand tokens (select all tied items)",
-                        "label_es": "Item(s) con MÁS fichas de demanda (selecciona todos los empatados)",
-                        "type": "multiselect",
-                        "options": [
-                            fi.value
-                            for fi in FoodItem
-                            if _is_item_available(fi.value, self.state.modules)
-                        ],
-                        "condition": demand_type == "most_demand",
-                    },
-                ],
+                ]
+                prompt_en = f"Which food items have demand tokens on the map? (for {demand_type.replace('_', ' ')})"
+                prompt_es = f"¿Qué items de comida tienen fichas de demanda? (para {demand_type.replace('_', ' ')})"
+
+            self.state.pending_input = {
+                "type": "demand_info",
+                "prompt": prompt_en,
+                "prompt_es": prompt_es,
+                "demand_type": demand_type,
+                "multiplier": multiplier,
+                "food_amount": food_amount,
+                "fields": fields,
             }
             self.state.phase = GamePhase.WAITING_FOR_INPUT
             return {
@@ -1960,14 +2171,6 @@ class GameEngine:
         items_with_demand = input_data.get("items_with_demand", [])
         most_demand_items = input_data.get("most_demand_items", [])
 
-        # If only one item has demand, it is automatically the most demanded
-        if (
-            demand_type == "most_demand"
-            and len(items_with_demand) == 1
-            and not most_demand_items
-        ):
-            most_demand_items = list(items_with_demand)
-
         added = []
         if demand_type == "all_demand":
             for item in items_with_demand:
@@ -1975,6 +2178,9 @@ class GameEngine:
                 self.state.inventory.add(item, amount)
                 added.append(f"+{amount} {item}")
                 self.state.log(f"All demand: +{amount} {item}", "get_food")
+                # Milestone: first burger/pizza produced
+                if item in PRODUCED_ITEM_MILESTONES:
+                    self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[item])
         elif demand_type == "most_demand":
             if len(most_demand_items) == 1:
                 # Single winner — no tie
@@ -1983,34 +2189,23 @@ class GameEngine:
                 self.state.inventory.add(item, amount)
                 added.append(f"+{amount} {item}")
                 self.state.log(f"Most demand: +{amount} {item}", "get_food")
+                # Milestone: first burger/pizza produced
+                if item in PRODUCED_ITEM_MILESTONES:
+                    self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[item])
             elif len(most_demand_items) > 1:
-                # Tie! Ask for demand tokens on houses to break it
-                self.state.pending_input = {
-                    "type": "demand_tiebreak",
-                    "prompt": f"Tie between {', '.join(most_demand_items)}! How many demand tokens on HOUSES for each?",
-                    "prompt_es": f"¡Empate entre {', '.join(most_demand_items)}! ¿Cuántas fichas de demanda en CASAS para cada uno?",
-                    "tied_items": most_demand_items,
-                    "multiplier": multiplier,
-                    "food_amount": food_amount,
-                    "fields": [
-                        {
-                            "name": f"house_demand_{item}",
-                            "label": f"Demand on houses: {item}",
-                            "label_es": f"Demanda en casas: {item}",
-                            "type": "number",
-                            "min": 0,
-                            "max": 50,
-                            "default": 0,
-                        }
-                        for item in most_demand_items
-                    ],
-                }
-                self.state.phase = GamePhase.WAITING_FOR_INPUT
-                return {
-                    "status": "waiting",
-                    "message": f"Tie for most demand between: {', '.join(most_demand_items)}. Need house demand info.",
-                    "input_needed": self.state.pending_input,
-                }
+                # Multiple items tied — pick one randomly
+                winner = random.choice(most_demand_items)
+                amount = food_amount * multiplier
+                self.state.inventory.add(winner, amount)
+                added.append(f"+{amount} {winner}")
+                self.state.log(
+                    f"Most demand tie between {', '.join(most_demand_items)} "
+                    f"— random pick: {winner}",
+                    "get_food",
+                )
+                # Milestone: first burger/pizza produced
+                if winner in PRODUCED_ITEM_MILESTONES:
+                    self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[winner])
             else:
                 self.state.log("No most demand item selected.", "get_food")
 
@@ -2056,6 +2251,9 @@ class GameEngine:
         amount = food_amount * multiplier
         self.state.inventory.add(winner, amount)
         self.state.log(f"Most demand: +{amount} {winner}", "get_food")
+        # Milestone: first burger/pizza produced
+        if winner in PRODUCED_ITEM_MILESTONES:
+            self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[winner])
 
         # Right box: add food_item (with module/fallback)
         back = (
@@ -2104,6 +2302,9 @@ class GameEngine:
                     f"+{amount} {fi_fallback} (fallback, {fi_module} not in play)",
                     "get_food",
                 )
+                # Milestone: first burger/pizza produced
+                if fi_fallback in PRODUCED_ITEM_MILESTONES:
+                    self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[fi_fallback])
                 return f"+{amount} {fi_fallback}"
             else:
                 self.state.log(
@@ -2114,6 +2315,9 @@ class GameEngine:
         else:
             self.state.inventory.add(fi, amount)
             self.state.log(f"+{amount} {fi}", "get_food")
+            # Milestone: first burger/pizza produced
+            if fi in PRODUCED_ITEM_MILESTONES:
+                self._try_queue_milestone(PRODUCED_ITEM_MILESTONES[fi])
             return f"+{amount} {fi}"
 
     # ─── Initiate Marketing ───────────────────────────────────────────
@@ -2156,9 +2360,68 @@ class GameEngine:
             msg = "Initiate Marketing: No new marketeers to initiate." + hint
             return {"status": "ok", "message": msg, "next_phase": "get_food"}
 
-        # Build prompt fields — one campaign number field per new marketeer
-        fields = []
+        # ── Auto-activate Rural Marketeers (no campaign number) ──────────
+        rural_activated = []
         for slot in new_marketeers:
+            if slot.marketeer == "Rural Marketeer":
+                slot.is_busy = True
+                slot.market_item = market_item
+                slot.campaign_number = None  # Giant billboards have no number
+                slot.campaigns_left = -1  # Eternal
+                slot.placed_turn = self.state.turn_number
+                self.state.log(
+                    f"Rural Marketeer (slot {slot.slot_number}): permanent Giant Billboard "
+                    f"marketing {market_item} on tile {market_tile}.",
+                    "marketing",
+                )
+                rural_activated.append(
+                    f"Rural Marketeer (slot {slot.slot_number}) Giant Billboard "
+                    f"{market_item}, permanent"
+                )
+                self._try_queue_milestone("first_to_market")
+                if "Rural Marketeer" in MARKETEER_MILESTONE_MAP:
+                    self._try_queue_milestone(
+                        MARKETEER_MILESTONE_MAP["Rural Marketeer"]
+                    )
+
+        # Remaining new marketeers that still need campaign number input
+        prompt_marketeers = [
+            slot for slot in new_marketeers if slot.marketeer != "Rural Marketeer"
+        ]
+
+        if not prompt_marketeers:
+            # Only Rural Marketeers were new — already auto-activated
+            # Fire per-item milestones if any rural campaigns went active
+            if rural_activated:
+                _mkt_key = (
+                    "first_burger_marketed"
+                    if market_item == "burger"
+                    else (
+                        "first_pizza_marketed"
+                        if market_item == "pizza"
+                        else (
+                            "first_drink_marketed"
+                            if market_item in DRINK_ITEMS
+                            else None
+                        )
+                    )
+                )
+                if _mkt_key:
+                    self._try_queue_milestone(_mkt_key)
+            self.state.phase = GamePhase.GET_FOOD
+            hint = self._worktime_turn_hint()
+            msg = "Initiate Marketing: " + " | ".join(rural_activated) + hint
+            return {"status": "ok", "message": msg, "next_phase": "get_food"}
+
+        # Build prompt fields — one campaign select field per new marketeer
+        # Collect currently active campaign numbers to exclude from options
+        active_numbers: set[int] = set()
+        for s in self.state.marketeer_slots:
+            if s.is_busy and s.campaign_number is not None:
+                active_numbers.add(int(s.campaign_number))
+
+        fields = []
+        for slot in prompt_marketeers:
             duration = MARKETEER_DURATIONS.get(slot.marketeer, 3)
             if duration == -1:
                 dur_label = "permanent"
@@ -2166,6 +2429,29 @@ class GameEngine:
             else:
                 dur_label = f"{duration} campaigns"
                 dur_label_es = f"{duration} campañas"
+
+            # Get valid campaign numbers for this marketeer type
+            valid_numbers = get_valid_campaign_numbers(slot.marketeer, active_numbers)
+
+            if not valid_numbers:
+                # No valid campaign numbers available — skip this marketeer
+                self.state.log(
+                    f"No campaign numbers available for {slot.marketeer} "
+                    f"(slot {slot.slot_number}). Skipping.",
+                    "marketing",
+                )
+                continue
+
+            # Build select options with labels showing campaign type
+            options = []
+            for num in valid_numbers:
+                ctype = get_campaign_type(num)
+                options.append({"value": str(num), "label": f"#{num} ({ctype})"})
+
+            # Reserve the default (lowest) number so the next marketeer
+            # in the same prompt won't be offered the same number
+            active_numbers.add(valid_numbers[0])
+
             fields.append(
                 {
                     "name": f"campaign_slot_{slot.slot_number}",
@@ -2177,10 +2463,9 @@ class GameEngine:
                         f"Campaña # para {slot.marketeer} "
                         f"(casilla {slot.slot_number}, {market_item}, {dur_label_es})"
                     ),
-                    "type": "number",
-                    "min": 1,
-                    "max": 99,
-                    "default": 1,
+                    "type": "select",
+                    "options": options,
+                    "default": str(valid_numbers[0]),
                 }
             )
 
@@ -2189,6 +2474,7 @@ class GameEngine:
             "type": "initiate_marketing_campaigns",
             "market_item": market_item,
             "market_tile": market_tile,
+            "rural_activated": rural_activated,
             "prompt": (
                 f"Assign marketing campaign numbers.\n"
                 f"Market item: {market_item} | Target tile: {market_tile}"
@@ -2211,19 +2497,44 @@ class GameEngine:
         pending = self.state.pending_input or {}
         market_item = pending.get("market_item", "unknown")
         market_tile = pending.get("market_tile", 1)
+        rural_activated = pending.get("rural_activated", [])
         self.state.pending_input = None
 
-        campaigns = []
+        # Collect active campaign numbers for validation
+        active_numbers: set[int] = set()
+        for s in self.state.marketeer_slots:
+            if s.is_busy and s.campaign_number is not None:
+                active_numbers.add(int(s.campaign_number))
+
+        campaigns = list(rural_activated)  # Start with any auto-activated Rural msgs
         for slot in self.state.marketeer_slots:
             if slot.marketeer and not slot.is_busy:
-                campaign_num = input_data.get(f"campaign_slot_{slot.slot_number}", 1)
+                raw_val = input_data.get(f"campaign_slot_{slot.slot_number}")
+                if raw_val is None:
+                    # No input for this slot (e.g. skipped due to no valid numbers)
+                    continue
+                try:
+                    campaign_num = int(raw_val)
+                except (ValueError, TypeError):
+                    campaign_num = None
+
                 duration = MARKETEER_DURATIONS.get(slot.marketeer, 3)
+
+                # Validate against allowed numbers for this marketeer type
+                valid_numbers = get_valid_campaign_numbers(
+                    slot.marketeer, active_numbers
+                )
+                if campaign_num not in valid_numbers:
+                    # Fallback to lowest valid number
+                    campaign_num = valid_numbers[0] if valid_numbers else 1
 
                 slot.is_busy = True
                 slot.market_item = market_item
                 slot.campaign_number = campaign_num
                 slot.campaigns_left = duration  # -1 for eternal (Rural Marketeer)
                 slot.placed_turn = self.state.turn_number
+                # Track this number as active for subsequent slots
+                active_numbers.add(campaign_num)
 
                 dur_desc = "permanent" if duration == -1 else f"{duration} campaigns"
                 campaigns.append(
@@ -2237,16 +2548,31 @@ class GameEngine:
                     f"Duration: {dur_desc}.",
                     "marketing",
                 )
-                # Milestone: first to market
-                if "first_to_market" not in self.state.milestones_claimed:
-                    self.state.milestones_claimed.append("first_to_market")
-                    self.state.log("Milestone claimed: First to Market!", "milestone")
+                # Milestone: first to market (legacy/always)
+                self._try_queue_milestone("first_to_market")
 
-        if self.state.mass_marketeer:
-            campaigns.append("Mass Marketeer: additional marketing campaign")
-            self.state.log(
-                "Mass Marketeer runs additional marketing campaign phase.", "marketing"
+                # Campaign type milestones (Base: billboard, airplane, radio)
+                try:
+                    cnum = int(campaign_num)
+                    ctype = get_campaign_type(cnum)
+                    if ctype and ctype in CAMPAIGN_TYPE_MILESTONES:
+                        self._try_queue_milestone(CAMPAIGN_TYPE_MILESTONES[ctype])
+                except (ValueError, TypeError):
+                    pass
+
+        # Per-item first-marketed milestones (Base milestones — now always checked, not Hard Choices only)
+        if campaigns:
+            _mkt_key = (
+                "first_burger_marketed"
+                if market_item == "burger"
+                else (
+                    "first_pizza_marketed"
+                    if market_item == "pizza"
+                    else "first_drink_marketed" if market_item in DRINK_ITEMS else None
+                )
             )
+            if _mkt_key:
+                self._try_queue_milestone(_mkt_key)
 
         self.state.phase = GamePhase.GET_FOOD
         hint = self._worktime_turn_hint()
@@ -2289,6 +2615,9 @@ class GameEngine:
             else:
                 desc = f"Place house #{dev_house}" if dev_house else "Place house"
             self.state.log(f"DEVELOP ★: {desc}. Target tile: {dev_tile}", "develop")
+            # Milestone: first house built (Expansion milestone)
+            if dev_type == "house":
+                self._try_queue_milestone("first_house_built")
             self.state.phase = GamePhase.LOBBY
             hint = self._worktime_turn_hint()
             return {
@@ -2347,6 +2676,8 @@ class GameEngine:
             else:
                 desc = "Place road"
             self.state.log(f"LOBBY ★: {desc}. Target tile: {dev_tile}", "lobby")
+            # Milestone: first lobbyist used (Module milestone)
+            self._try_queue_milestone("first_lobbyist_used")
             self.state.phase = GamePhase.EXPAND_CHAIN
             hint = self._worktime_turn_hint()
             return {
@@ -2577,68 +2908,143 @@ class GameEngine:
     def _do_marketing_campaigns(self) -> dict:
         """MARKETING CAMPAIGNS phase: resolve active campaigns.
 
-        Decrement campaign counters and remove expired marketeers.
-        This was previously done during Cleanup but belongs here per the rules.
+        All active campaigns fire their effects (place demand on the board).
+        If the Chain has a Mass Marketeer, an additional round of campaign
+        effects fires (all campaigns resolve twice).  Duration markers are
+        only decremented once, after all rounds are complete.  The Mass
+        Marketeer is then returned to the employee pool.
         """
-        self.state.log(f"=== MARKETING CAMPAIGNS ===", "phase")
+        self.state.log("=== MARKETING CAMPAIGNS ===", "phase")
 
-        msgs = []
-        for slot in self.state.marketeer_slots:
-            if slot.marketeer and slot.is_busy and slot.campaigns_left is not None:
-                # Skip eternal campaigns (Rural Marketeer: campaigns_left == -1)
-                if slot.campaigns_left == -1:
-                    self.state.log(
-                        f"{slot.marketeer} (slot {slot.slot_number}): "
-                        f"permanent campaign ({slot.market_item}, #{slot.campaign_number}).",
-                        "marketing_campaigns",
-                    )
-                    msgs.append(
-                        f"{slot.marketeer} (slot {slot.slot_number}): permanent"
-                    )
-                    continue
-                slot.campaigns_left -= 1
-                if slot.campaigns_left <= 0:
-                    expired_name = slot.marketeer
-                    self.state.log(
-                        f"{expired_name} (slot {slot.slot_number}) campaign expired! "
-                        f"Marketing {slot.market_item}, campaign #{slot.campaign_number}. "
-                        f"Marketeer removed.",
-                        "marketing_campaigns",
-                    )
-                    # Brand Director goes to employee pile when campaign expires
-                    if expired_name == "Brand Director":
-                        self.state.employee_pile.append("Brand Director")
-                        self.state.log(
-                            f"Brand Director placed in employee pile.",
-                            "marketing_campaigns",
-                        )
-                        msgs.append(
-                            f"{expired_name} (slot {slot.slot_number}) campaign expired — moved to employee pile"
-                        )
-                    else:
-                        msgs.append(
-                            f"{expired_name} (slot {slot.slot_number}) campaign expired — removed"
-                        )
-                    slot.marketeer = None
-                    slot.is_busy = False
-                    slot.market_item = None
-                    slot.campaign_number = None
-                    slot.campaigns_left = None
-                    slot.placed_turn = None
-                else:
-                    self.state.log(
-                        f"{slot.marketeer} (slot {slot.slot_number}): "
-                        f"{slot.campaigns_left} campaign(s) remaining "
-                        f"({slot.market_item}, #{slot.campaign_number}).",
-                        "marketing_campaigns",
-                    )
-                    msgs.append(
-                        f"{slot.marketeer} (slot {slot.slot_number}): "
-                        f"{slot.campaigns_left} left"
-                    )
+        active_slots = [
+            slot
+            for slot in self.state.marketeer_slots
+            if slot.marketeer and slot.is_busy and slot.campaigns_left is not None
+        ]
 
-        if not msgs:
+        msgs: list[str] = []
+
+        if not active_slots:
             self.state.log("No active marketing campaigns.", "marketing_campaigns")
+            # Even with no regular campaigns, Mass Marketeer has nothing to double
+            if self.state.mass_marketeer:
+                self.state.mass_marketeer = False
+                self.state.log(
+                    "Mass Marketeer returned to employee pool (no campaigns to run).",
+                    "marketing_campaigns",
+                )
+                msgs.append("Mass Marketeer returned to pool (no campaigns)")
+            self.state.phase = GamePhase.CLEANUP
+            return {
+                "status": "ok",
+                "message": "Marketing Campaigns: "
+                + (" | ".join(msgs) if msgs else "No active campaigns."),
+                "next_phase": "cleanup",
+            }
+
+        # ── Round 1: Normal campaign resolution ──────────────────────────
+        self.state.log("--- Campaign Round 1 ---", "marketing_campaigns")
+        for slot in active_slots:
+            camp_num = (
+                f"#{slot.campaign_number}"
+                if slot.campaign_number is not None
+                else "Giant Billboard"
+            )
+            if slot.campaigns_left == -1:
+                self.state.log(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"permanent campaign ({slot.market_item}, {camp_num}).",
+                    "marketing_campaigns",
+                )
+                msgs.append(f"{slot.marketeer} (slot {slot.slot_number}): permanent")
+            else:
+                self.state.log(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"campaign fires ({slot.market_item}, {camp_num}), "
+                    f"{slot.campaigns_left} duration marker(s) before decrement.",
+                    "marketing_campaigns",
+                )
+                msgs.append(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"{slot.market_item} {camp_num}"
+                )
+
+        # ── Round 2: Mass Marketeer extra campaign round ─────────────────
+        has_mass = self.state.mass_marketeer
+        if has_mass:
+            self.state.log(
+                "--- EXTRA Campaign Round (Mass Marketeer) ---",
+                "marketing_campaigns",
+            )
+            for slot in active_slots:
+                camp_num = (
+                    f"#{slot.campaign_number}"
+                    if slot.campaign_number is not None
+                    else "Giant Billboard"
+                )
+                self.state.log(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"EXTRA campaign fires ({slot.market_item}, {camp_num}).",
+                    "marketing_campaigns",
+                )
+            msgs.append("Mass Marketeer: all campaigns fire a 2nd time")
+
+        # ── Decrement duration markers & expire (once, after all rounds) ─
+        for slot in active_slots:
+            # Eternal campaigns (Rural Marketeer) — never decrement
+            if slot.campaigns_left == -1:
+                continue
+
+            slot.campaigns_left -= 1
+            if slot.campaigns_left <= 0:
+                expired_name = slot.marketeer
+                self.state.log(
+                    f"{expired_name} (slot {slot.slot_number}) campaign expired! "
+                    f"Marketing {slot.market_item}, "
+                    f"campaign #{slot.campaign_number}. Marketeer removed.",
+                    "marketing_campaigns",
+                )
+                # Brand Director goes to employee pile when campaign expires
+                if expired_name == "Brand Director":
+                    self.state.employee_pile.append("Brand Director")
+                    self.state.log(
+                        "Brand Director placed in employee pile.",
+                        "marketing_campaigns",
+                    )
+                    msgs.append(
+                        f"{expired_name} (slot {slot.slot_number}) expired — to employee pile"
+                    )
+                else:
+                    msgs.append(
+                        f"{expired_name} (slot {slot.slot_number}) expired — removed"
+                    )
+                slot.marketeer = None
+                slot.is_busy = False
+                slot.market_item = None
+                slot.campaign_number = None
+                slot.campaigns_left = None
+                slot.placed_turn = None
+            else:
+                self.state.log(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"{slot.campaigns_left} campaign(s) remaining "
+                    f"({slot.market_item}, "
+                    f"{'Giant Billboard' if slot.campaign_number is None else '#' + str(slot.campaign_number)}).",
+                    "marketing_campaigns",
+                )
+                msgs.append(
+                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"{slot.campaigns_left} left"
+                )
+
+        # ── Return Mass Marketeer to employee pool ───────────────────────
+        if has_mass:
+            self.state.mass_marketeer = False
+            self.state.log(
+                "Mass Marketeer returned to employee pool.",
+                "marketing_campaigns",
+            )
+            msgs.append("Mass Marketeer returned to employee pool")
 
         self.state.phase = GamePhase.CLEANUP
         return {
@@ -2664,6 +3070,26 @@ class GameEngine:
         msgs = []
         shuffle_needed = False
 
+        # 1. Inventory cap (max 10, excluding coffee)
+        cap_details = self.state.inventory.cap_inventory()
+        if cap_details:
+            msgs.append(f"Inventory capped: {', '.join(cap_details)}")
+            self.state.log(
+                f"Cleanup: Inventory capped — {', '.join(cap_details)}", "cleanup"
+            )
+
+        # Coffee cannot be stored — discard all coffee at end of turn
+        if self.state.modules.get("coffee"):
+            coffee_count = self.state.inventory.items.get("coffee", 0)
+            if coffee_count > 0:
+                self.state.inventory.clear_item("coffee")
+                msgs.append(f"Coffee lost: {coffee_count} (cannot be stored)")
+                self.state.log(
+                    f"Cleanup: {coffee_count} coffee discarded (cannot be stored).",
+                    "cleanup",
+                )
+
+        # 2. Cleanup actions from the active back card
         for ca in cleanup_actions:
             ca_type = ca["type"]
             ca_value = ca["value"]
@@ -2712,14 +3138,6 @@ class GameEngine:
                 if crossed:
                     shuffle_needed = True
 
-        # Cap inventory (max 10, excluding coffee)
-        cap_details = self.state.inventory.cap_inventory()
-        if cap_details:
-            msgs.append(f"Inventory capped: {', '.join(cap_details)}")
-            self.state.log(
-                f"Cleanup: Inventory capped — {', '.join(cap_details)}", "cleanup"
-            )
-
         # Shuffle if needed
         if shuffle_needed:
             self.state.reshuffle_deck()
@@ -2741,9 +3159,66 @@ class GameEngine:
         # End of turn — campaign decrement is now handled in Marketing Campaigns phase
         # Advance to next turn
         self.state.turn_number += 1
-        self.state.phase = GamePhase.RESTRUCTURING
 
-        # Clear pending stars
+        # Hard Choices: expire milestones at end of turn 2 and turn 3 (Base milestones only)
+        if self.state.optional_rules.get("hard_choices") and not self.state.modules.get(
+            "milestones"
+        ):
+            completed_turn = self.state.turn_number - 1
+            if completed_turn == 2:
+                expire_candidates = [
+                    "first_to_train",
+                    "first_burger_marketed",
+                    "first_pizza_marketed",
+                    "first_drink_marketed",
+                ]
+            elif completed_turn == 3:
+                expire_candidates = ["first_to_hire_3"]
+            else:
+                expire_candidates = []
+            for key in expire_candidates:
+                if (
+                    key not in self.state.milestones_claimed
+                    and key not in self.state.milestones_unavailable
+                    and key not in self.state.milestones_expired
+                    and is_milestone_in_active_set(key, self.state.modules)
+                ):
+                    self.state.milestones_expired.append(key)
+                    en_name, _ = self.MILESTONE_LABELS.get(key, (key, key))
+                    msgs.append(f"\u23f3 '{en_name}' expired (Hard Choices)!")
+                    self.state.log(
+                        f"Hard Choices: '{en_name}' milestone expired at end of turn {completed_turn}.",
+                        "milestone",
+                    )
+
+        # Expansion Milestones: "Remove after turn 2" — expire tokens at end of turn 2
+        if self.state.modules.get("milestones"):
+            completed_turn = self.state.turn_number - 1
+            if completed_turn == 2 and self.state.milestones_turn2_tokens:
+                for key in list(self.state.milestones_turn2_tokens):
+                    if (
+                        key not in self.state.milestones_claimed
+                        and key not in self.state.milestones_unavailable
+                        and key not in self.state.milestones_expired
+                    ):
+                        self.state.milestones_expired.append(key)
+                        en_name, _ = self.MILESTONE_LABELS.get(key, (key, key))
+                        msgs.append(f"✖ '{en_name}' expired (turn 2 token removed)!")
+                        self.state.log(
+                            f"Expansion Milestones: '{en_name}' expired — turn 2 token removed.",
+                            "milestone",
+                        )
+                self.state.milestones_turn2_tokens.clear()
+
+        # Hard Choices + Expansion Milestones: apply turn-2 expiry from Expansion rules
+        if self.state.optional_rules.get("hard_choices") and self.state.modules.get(
+            "milestones"
+        ):
+            completed_turn = self.state.turn_number - 1
+            # The Expansion turn-2 expiry already handled the 3 token milestones above.
+            # Hard Choices doesn't add extra expiry when Expansion milestones are active.
+
+        # Clear pending stars now so they don't linger into the roundup prompt
         self.state.pending_stars = []
 
         result_msg = "Cleanup complete: " + (
@@ -2754,6 +3229,83 @@ class GameEngine:
             "phase",
         )
 
+        # ── End-of-round milestone roundup ──────────────────────────────
+        # Build the two lists for the cleanup prompt:
+        #   chain_claimed  — milestones The Chain auto-claimed this round
+        #   still_available — milestones available for the player to claim
+        #                     (active, not chain-claimed, not player-claimed, not expired)
+        resolved = (
+            set(self.state.milestones_claimed)
+            | set(self.state.milestones_unavailable)
+            | set(self.state.milestones_expired)
+        )
+        active_ms = get_active_milestones(self.state.modules)
+
+        chain_claimed_info = []
+        for key in self.state.milestones_claimed_this_round:
+            en, es = self.MILESTONE_LABELS.get(key, (key, key))
+            chain_claimed_info.append({"key": key, "label_en": en, "label_es": es})
+
+        still_available_info = []
+        for m in active_ms:
+            key = m["key"]
+            if key not in resolved:
+                still_available_info.append(
+                    {
+                        "key": key,
+                        "label_en": m["label_en"],
+                        "label_es": m["label_es"],
+                    }
+                )
+
+        if chain_claimed_info or still_available_info:
+            # Build prompt text
+            chain_names_en = ", ".join(i["label_en"] for i in chain_claimed_info)
+            chain_names_es = ", ".join(i["label_es"] for i in chain_claimed_info)
+            if chain_claimed_info:
+                prompt_en = (
+                    f"🏆 Milestone Roundup\n"
+                    # f"The Chain claimed: {chain_names_en}.\n"
+                    # f"Check any milestones that you ALSO claimed this round\n"
+                    # f"(joint claims keep the 🏆 — no X token needed).\n"
+                    # f"Also check any available milestones you claimed on your own."
+                )
+                prompt_es = (
+                    f"🏆 Resumen de Hitos\n"
+                    # f"La Cadena reclamó: {chain_names_es}.\n"
+                    # f"Marca los hitos que TÚ TAMBIÉN reclamaste este turno\n"
+                    # f"(reclamación conjunta — no coloca ficha X).\n"
+                    # f"También marca los hitos disponibles que reclamaste tú solo."
+                )
+            else:
+                prompt_en = (
+                    "🏆 Milestone Roundup\n"
+                    "Did you claim any milestones this round?\n"
+                    "Check the ones you claimed so they can be deactivated."
+                )
+                prompt_es = (
+                    "🏆 Resumen de Hitos\n"
+                    "¿Reclamaste algún hito este turno?\n"
+                    "Marca los que hayas reclamado para desactivarlos."
+                )
+
+            self.state.pending_input = {
+                "type": "milestone_player_roundup",
+                "prompt": prompt_en,
+                "prompt_es": prompt_es,
+                "chain_claimed": chain_claimed_info,
+                "available": still_available_info,
+            }
+            self.state.phase = GamePhase.WAITING_FOR_INPUT
+            return {
+                "status": "waiting",
+                "message": result_msg,
+                "input_needed": self.state.pending_input,
+            }
+
+        # Nothing to reconcile — clear round tracking and proceed directly
+        self.state.milestones_claimed_this_round.clear()
+        self.state.phase = GamePhase.RESTRUCTURING
         return {
             "status": "ok",
             "message": result_msg,
@@ -2763,99 +3315,25 @@ class GameEngine:
     # ─── Undo ────────────────────────────────────────────────────────────
 
     def undo(self) -> dict:
-        """Undo the last action by restoring previous state snapshot."""
+        """Undo the last action by restoring previous state snapshot.
+
+        Uses _deserialize_full_state from save_manager for a complete,
+        reliable restore that covers all fields (decks, discard pile,
+        tracks, inventory, marketeers, competition state, etc.).
+        """
         if not self.state.history:
             return {"status": "error", "message": "Nothing to undo."}
 
         snapshot_json = self.state.history.pop()
         snapshot = __import__("json").loads(snapshot_json)
 
-        # Preserve history stack
+        # Preserve the current history stack (snapshots don't include it)
         history = self.state.history
 
-        # Rebuild state from snapshot (simplified — restores key fields)
-        self.state.turn_number = snapshot.get("turn_number", 0)
-        self.state.phase = GamePhase(snapshot.get("phase", "setup"))
-        self.state.bank_breaks = snapshot.get("bank_breaks", 0)
-        self.state.current_front_card = snapshot.get("current_front_card")
-        self.state.current_back_card = snapshot.get("current_back_card")
-        self.state.current_competition_card = snapshot.get("current_competition_card")
-        self.state.pending_input = snapshot.get("pending_input")
-        self.state.is_first_turn = snapshot.get("is_first_turn", False)
-        self.state.chain_cash_this_turn = snapshot.get("chain_cash_this_turn", 0)
-        self.state.chain_total_cash = snapshot.get("chain_total_cash", 0)
-        self.state.bonus_cash_multiplier = snapshot.get("bonus_cash_multiplier", 1.0)
-        self.state.no_driveins_this_turn = snapshot.get("no_driveins_this_turn", False)
-        self.state.milestones_claimed = snapshot.get("milestones_claimed", [])
-        self.state.restaurants = snapshot.get("restaurants", [])
-        self.state.employee_pile = snapshot.get("employee_pile", [])
-        self.state.mass_marketeer = snapshot.get("mass_marketeer", False)
-        self.state.pending_stars = snapshot.get("pending_stars", [])
-        self.state.cards_drawn_this_cycle = snapshot.get("cards_drawn_this_cycle", 0)
-        self.state.deck_cycles = snapshot.get("deck_cycles", 0)
-        self.state.total_cards_drawn = snapshot.get("total_cards_drawn", 0)
+        # Full restore via the same deserializer used by save/load
+        from .save_manager import _deserialize_full_state
 
-        # Restore decks from snapshot card lists
-        from .cards import create_all_decks as _create_all_decks
-
-        _ad, _wd, _cd = _create_all_decks()
-        _all_cards = {}
-        for c in _ad.cards + _wd.cards + _cd.cards:
-            _all_cards[(c.card_type.value, c.card_number)] = c
-
-        for deck_key, deck_attr in [
-            ("action_deck", "action_deck"),
-            ("warm_deck", "warm_deck"),
-            ("cool_deck", "cool_deck"),
-        ]:
-            deck_snap = snapshot.get(deck_key, {})
-            card_list = deck_snap.get("cards", [])
-            if card_list:
-                new_deck = Deck(name=deck_snap.get("name", deck_key))
-                for cd in card_list:
-                    key = (cd["card_type"], cd["card_number"])
-                    if key in _all_cards:
-                        new_deck.cards.append(_all_cards[key])
-                setattr(self.state, deck_attr, new_deck)
-
-        # Restore tracks
-        tracks_data = snapshot.get("tracks", {})
-        if "recruit_train" in tracks_data:
-            self.state.tracks.recruit_train.position = tracks_data["recruit_train"][
-                "position"
-            ]
-        if "price_distance" in tracks_data:
-            self.state.tracks.price_distance.position = tracks_data["price_distance"][
-                "position"
-            ]
-        if "waitresses" in tracks_data:
-            self.state.tracks.waitresses.position = tracks_data["waitresses"][
-                "position"
-            ]
-        if "competition" in tracks_data:
-            self.state.tracks.competition = CompetitionLevel(
-                tracks_data["competition"]["level"]
-            )
-
-        # Restore inventory
-        inv_data = snapshot.get("inventory", {})
-        for item, vals in inv_data.items():
-            if item in self.state.inventory.items:
-                if isinstance(vals, dict):
-                    # Migration: old format had {top, bottom}
-                    self.state.inventory.items[item] = vals.get(
-                        "count", vals.get("top", 0) + vals.get("bottom", 0)
-                    )
-                else:
-                    self.state.inventory.items[item] = vals
-
-        # Restore marketeer slots
-        slots_data = snapshot.get("marketeer_slots", [])
-        for i, sd in enumerate(slots_data):
-            if i < len(self.state.marketeer_slots):
-                self.state.marketeer_slots[i].marketeer = sd.get("marketeer")
-                self.state.marketeer_slots[i].is_busy = sd.get("is_busy", False)
-
+        self.state = _deserialize_full_state(snapshot)
         self.state.history = history
         self.state.log("Undo performed.", "system")
 

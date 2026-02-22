@@ -581,18 +581,423 @@ class MarketeerSlot:
 
 # ─── Milestones ──────────────────────────────────────────────────────────────
 
-MILESTONES = [
-    "first_to_lower_prices",
-    "first_to_train",
-    "first_to_hire_3",
-    "first_to_have_waitress",
-    "first_to_market",
-    "first_to_pay_20_salary",
-    "first_cart_operator",
-    "first_errand_boy",
-    "first_discount_manager",
-    "first_to_throw_away",
+# Each milestone dict: key, label_en, label_es, chain_can_claim, trigger_hint
+# chain_can_claim=False → The Chain never triggers this milestone (but it appears on the board)
+
+BASE_MILESTONES: list[dict] = [
+    {
+        "key": "first_to_hire_3",
+        "label_en": "First to Hire 3 People in 1 Turn",
+        "label_es": "Primero en Contratar 3 en 1 Turno",
+        "chain_can_claim": True,
+        "trigger_hint": "rt_track_3",
+    },
+    {
+        "key": "first_to_throw_away",
+        "label_en": "First to Throw Away Drink/Food",
+        "label_es": "Primero en Tirar Comida/Bebida",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_waitress_played",
+        "label_en": "First Waitress Played",
+        "label_es": "Primera Camarera Jugada",
+        "chain_can_claim": True,
+        "trigger_hint": "waitress_track",
+    },
+    {
+        "key": "first_to_have_20",
+        "label_en": "First to Have $20",
+        "label_es": "Primero en Tener $20",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_cash",
+    },
+    {
+        "key": "first_to_have_100",
+        "label_en": "First to Have $100",
+        "label_es": "Primero en Tener $100",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_cash",
+    },
+    {
+        "key": "first_to_lower_prices",
+        "label_en": "First to Lower Prices",
+        "label_es": "Primero en Bajar Precios",
+        "chain_can_claim": True,
+        "trigger_hint": "price_track",
+    },
+    {
+        "key": "first_to_train",
+        "label_en": "First to Train",
+        "label_es": "Primero en Entrenar",
+        "chain_can_claim": True,
+        "trigger_hint": "rt_track_2",
+    },
+    {
+        "key": "first_to_pay_20_salary",
+        "label_en": "First to Pay $20 or More in Salaries",
+        "label_es": "Primero en Pagar $20+ en Salarios",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_errand_boy",
+        "label_en": "First Errand Boy Played",
+        "label_es": "Primer Chico de los Recados",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_cart_operator",
+        "label_en": "First Cart Operator Played",
+        "label_es": "Primer Operador de Carrito",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_burger_produced",
+        "label_en": "First Burger Produced",
+        "label_es": "Primera Hamburguesa Producida",
+        "chain_can_claim": True,
+        "trigger_hint": "inventory_add_burger",
+    },
+    {
+        "key": "first_pizza_produced",
+        "label_en": "First Pizza Produced",
+        "label_es": "Primera Pizza Producida",
+        "chain_can_claim": True,
+        "trigger_hint": "inventory_add_pizza",
+    },
+    {
+        "key": "first_pizza_marketed",
+        "label_en": "First Pizza Marketed",
+        "label_es": "Primera Pizza en Marketing",
+        "chain_can_claim": True,
+        "trigger_hint": "marketing_item",
+    },
+    {
+        "key": "first_drink_marketed",
+        "label_en": "First Drink Marketed",
+        "label_es": "Primera Bebida en Marketing",
+        "chain_can_claim": True,
+        "trigger_hint": "marketing_item",
+    },
+    {
+        "key": "first_burger_marketed",
+        "label_en": "First Burger Marketed",
+        "label_es": "Primera Hamburguesa en Marketing",
+        "chain_can_claim": True,
+        "trigger_hint": "marketing_item",
+    },
+    {
+        "key": "first_billboard_placed",
+        "label_en": "First Billboard Placed",
+        "label_es": "Primer Cartel Colocado",
+        "chain_can_claim": True,
+        "trigger_hint": "campaign_type",
+    },
+    {
+        "key": "first_airplane_campaign",
+        "label_en": "First Airplane Campaign",
+        "label_es": "Primera Campaña en Avioneta",
+        "chain_can_claim": True,
+        "trigger_hint": "campaign_type",
+    },
+    {
+        "key": "first_radio_campaign",
+        "label_en": "First Radio Campaign",
+        "label_es": "Primera Campaña de Radio",
+        "chain_can_claim": True,
+        "trigger_hint": "campaign_type",
+    },
 ]
+
+EXPANSION_MILESTONES: list[dict] = [
+    {
+        "key": "first_marketeer_used",
+        "label_en": "First Marketeer Used",
+        "label_es": "Primer Marketeer Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+    },
+    {
+        "key": "first_brand_director_used",
+        "label_en": "First Brand Director Used",
+        "label_es": "Primer Director de Marca Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+    },
+    {
+        "key": "first_campaign_manager_used",
+        "label_en": "First Campaign Manager Used",
+        "label_es": "Primer Gerente de Campaña Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+    },
+    {
+        "key": "first_brand_manager_used",
+        "label_en": "First Brand Manager Used",
+        "label_es": "Primer Gerente de Marca Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+    },
+    {
+        "key": "first_marketing_trainee_used",
+        "label_en": "First Marketing Trainee Used",
+        "label_es": "Primer Aprendiz de Marketing Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+    },
+    {
+        "key": "first_burger_sold",
+        "label_en": "First Burger Sold",
+        "label_es": "Primera Hamburguesa Vendida",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+    },
+    {
+        "key": "first_pizza_sold",
+        "label_en": "First Pizza Sold",
+        "label_es": "Primera Pizza Vendida",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+    },
+    {
+        "key": "first_lemonade_sold",
+        "label_en": "First Lemonade Sold",
+        "label_es": "Primera Limonada Vendida",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+    },
+    {
+        "key": "first_beer_sold",
+        "label_en": "First Beer Sold",
+        "label_es": "Primera Cerveza Vendida",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+    },
+    {
+        "key": "first_cart_operator_used",
+        "label_en": "First Cart Operator Used",
+        "label_es": "Primer Operador de Carrito Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_soda_sold",
+        "label_en": "First Soda Sold",
+        "label_es": "Primer Refresco Vendido",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+    },
+    {
+        "key": "first_recruiting_girl_used",
+        "label_en": "First Recruiting Girl Used",
+        "label_es": "Primera Chica de Reclutamiento Usada",
+        "chain_can_claim": False,
+        "trigger_hint": "never",
+    },
+    {
+        "key": "first_trainer_used",
+        "label_en": "First Trainer Used",
+        "label_es": "Primer Entrenador Usado",
+        "chain_can_claim": False,
+        "trigger_hint": "never",
+    },
+    {
+        "key": "first_discount_manager_used",
+        "label_en": "First Discount Manager Used",
+        "label_es": "Primer Gerente de Descuentos Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "card_action",
+    },
+    {
+        "key": "first_house_built",
+        "label_en": "First House Built",
+        "label_es": "Primera Casa Construida",
+        "chain_can_claim": True,
+        "trigger_hint": "develop_house",
+    },
+    {
+        "key": "first_new_restaurant",
+        "label_en": "First New Restaurant",
+        "label_es": "Primer Restaurante Nuevo",
+        "chain_can_claim": True,
+        "trigger_hint": "expand_chain",
+    },
+    {
+        "key": "first_waitress_used",
+        "label_en": "First Waitress Used",
+        "label_es": "Primera Camarera Usada",
+        "chain_can_claim": True,
+        "trigger_hint": "waitress_track",
+    },
+]
+
+# Module-dependent milestones — only active when the required module is enabled
+MODULE_MILESTONES: list[dict] = [
+    {
+        "key": "someone_sells_demand",
+        "label_en": "Someone Sells Your Demand",
+        "label_es": "Alguien Vende tu Demanda",
+        "chain_can_claim": True,
+        "trigger_hint": "ketchup_dinnertime",
+        "required_module": "ketchup",
+    },
+    {
+        "key": "first_rural_marketeer_used",
+        "label_en": "First Rural Marketeer Used",
+        "label_es": "Primer Marketeer Rural Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "recruit_marketeer",
+        "required_module": "rural_marketeer",
+    },
+    {
+        "key": "first_coffee_sold",
+        "label_en": "First Coffee Sold",
+        "label_es": "Primer Café Vendido",
+        "chain_can_claim": True,
+        "trigger_hint": "dinnertime_sold",
+        "required_module": "coffee",
+    },
+    {
+        "key": "first_lobbyist_used",
+        "label_en": "First Lobbyist Used",
+        "label_es": "Primer Lobista Usado",
+        "chain_can_claim": True,
+        "trigger_hint": "lobby_action",
+        "required_module": "lobbyists",
+    },
+]
+
+# Expansion milestones with "Remove after turn 2" tokens
+EXPANSION_TURN2_EXPIRY: set[str] = {
+    "first_marketeer_used",
+    "first_trainer_used",
+    "first_recruiting_girl_used",
+}
+
+# Mapping from Base milestone keys to their Expansion equivalents (for card action remapping)
+BASE_TO_EXPANSION_MAP: dict[str, str] = {
+    "first_cart_operator": "first_cart_operator_used",
+    "first_discount_manager": "first_discount_manager_used",
+    "first_to_have_waitress": "first_waitress_used",
+    # These Base milestones have no Expansion equivalent — they are skipped when Expansion is active:
+    # first_errand_boy, first_to_pay_20_salary, first_to_throw_away
+}
+
+# Campaign number → campaign type mapping
+CAMPAIGN_NUMBERS: dict[str, list[int]] = {
+    "radio": [1, 2, 3],
+    "airplane": [4, 5, 6],
+    "mailbox": [7, 8, 9, 10],
+    "billboard": [11, 13, 14],
+    "gourmet": [17, 18, 19, 20],
+}
+
+# Marketeer name → allowed campaign types (ordered lowest-to-highest type)
+MARKETEER_CAMPAIGN_TYPES: dict[str, list[str]] = {
+    "Marketing Trainee": ["billboard"],
+    "Campaign Manager": ["mailbox", "billboard"],
+    "Brand Manager": ["airplane", "mailbox", "billboard"],
+    "Brand Director": ["radio", "airplane", "mailbox", "billboard"],
+    "Gourmet Food Critic": ["gourmet"],
+}
+
+# Campaign type → milestone key mapping
+CAMPAIGN_TYPE_MILESTONES: dict[str, str] = {
+    "radio": "first_radio_campaign",
+    "airplane": "first_airplane_campaign",
+    "billboard": "first_billboard_placed",
+}
+
+# Marketeer name → milestone key mapping (for Expansion milestones)
+MARKETEER_MILESTONE_MAP: dict[str, str] = {
+    "Marketing Trainee": "first_marketing_trainee_used",
+    "Campaign Manager": "first_campaign_manager_used",
+    "Brand Manager": "first_brand_manager_used",
+    "Brand Director": "first_brand_director_used",
+    "Rural Marketeer": "first_rural_marketeer_used",
+}
+
+# Sold item → milestone key mapping
+SOLD_ITEM_MILESTONES: dict[str, str] = {
+    "burger": "first_burger_sold",
+    "pizza": "first_pizza_sold",
+    "lemonade": "first_lemonade_sold",
+    "beer": "first_beer_sold",
+    "softdrink": "first_soda_sold",
+    "coffee": "first_coffee_sold",
+}
+
+# Produced item → milestone key mapping (Base milestones)
+PRODUCED_ITEM_MILESTONES: dict[str, str] = {
+    "burger": "first_burger_produced",
+    "pizza": "first_pizza_produced",
+}
+
+# Drink items for marketing milestone detection
+DRINK_ITEMS: set[str] = {"beer", "lemonade", "softdrink"}
+
+
+def get_campaign_type(campaign_number: int) -> Optional[str]:
+    """Return the campaign type (radio/airplane/mailbox/billboard/gourmet) for a campaign number."""
+    for ctype, numbers in CAMPAIGN_NUMBERS.items():
+        if campaign_number in numbers:
+            return ctype
+    return None
+
+
+def get_valid_campaign_numbers(
+    marketeer_name: str, active_numbers: set[int]
+) -> list[int]:
+    """Return sorted list of valid campaign numbers for a marketeer, excluding active ones.
+
+    Each marketeer type can only launch certain campaign types:
+      - Marketing Trainee: billboard
+      - Campaign Manager: mailbox, billboard
+      - Brand Manager: airplane, mailbox, billboard
+      - Brand Director: radio, airplane, mailbox, billboard
+      - Gourmet Food Critic: gourmet
+    Numbers currently in use (active_numbers) are excluded.
+    """
+    allowed_types = MARKETEER_CAMPAIGN_TYPES.get(marketeer_name, [])
+    valid: list[int] = []
+    for ctype in allowed_types:
+        for num in CAMPAIGN_NUMBERS.get(ctype, []):
+            if num not in active_numbers:
+                valid.append(num)
+    return sorted(valid)
+
+
+def get_active_milestones(modules: dict) -> list[dict]:
+    """Return the list of milestones active for the current game configuration.
+
+    - modules["milestones"] OFF → Base milestones
+    - modules["milestones"] ON  → Expansion milestones
+    Plus any MODULE_MILESTONES whose required_module is active.
+    """
+    use_expansion = modules.get("milestones", False)
+    base = list(EXPANSION_MILESTONES if use_expansion else BASE_MILESTONES)
+    for mm in MODULE_MILESTONES:
+        if modules.get(mm["required_module"], False):
+            base.append(mm)
+    return base
+
+
+def get_active_milestone_keys(modules: dict) -> set[str]:
+    """Return the set of milestone keys active for the current game configuration."""
+    return {m["key"] for m in get_active_milestones(modules)}
+
+
+def is_milestone_in_active_set(key: str, modules: dict) -> bool:
+    """Check if a milestone key is in the currently active set."""
+    return key in get_active_milestone_keys(modules)
+
+
+# Legacy alias for backward compatibility
+MILESTONES = [m["key"] for m in BASE_MILESTONES]
 
 
 # ─── Game State ──────────────────────────────────────────────────────────────
@@ -664,13 +1069,22 @@ class GameState:
     # Milestones claimed by The Chain
     milestones_claimed: list[str] = field(default_factory=list)
 
+    # Milestones The Chain claimed during the current round (cleared at end-of-round roundup)
+    milestones_claimed_this_round: list[str] = field(default_factory=list)
+
     # Milestones already claimed by the player (not available to The Chain)
     milestones_unavailable: list[str] = field(default_factory=list)
 
-    # Milestones that triggered but need user confirmation
+    # Milestones that triggered but need user confirmation (legacy — kept for save compatibility)
     pending_milestone_checks: list[str] = field(default_factory=list)
 
-    # Phase to restore after milestone confirmation flow completes
+    # Milestones expired by the Hard Choices rule (no longer claimable by anyone)
+    milestones_expired: list[str] = field(default_factory=list)
+
+    # Milestones with "Remove after turn 2" tokens (Expansion milestones)
+    milestones_turn2_tokens: list[str] = field(default_factory=list)
+
+    # Phase to restore after milestone confirmation flow completes (legacy)
     phase_before_milestone: Optional[str] = None
 
     # Employees/Brand Director pending availability confirmation from the player
@@ -765,15 +1179,15 @@ class GameState:
         )
 
     def save_snapshot(self):
-        """Save current state to history for undo."""
-        snapshot = self.to_dict()
-        # Replace lightweight deck dicts with full card-list snapshots
-        snapshot["action_deck"] = self.action_deck.to_snapshot_dict()
-        snapshot["discard_pile"] = self.discard_pile.to_snapshot_dict()
-        snapshot["warm_deck"] = self.warm_deck.to_snapshot_dict()
-        snapshot["cool_deck"] = self.cool_deck.to_snapshot_dict()
-        # Don't include history in the snapshot to avoid nesting
-        snapshot.pop("history", None)
+        """Save current state to history for undo.
+
+        Uses the same serialization format as the save system
+        (_serialize_full_state) so that undo can reuse
+        _deserialize_full_state for a complete, reliable restore.
+        """
+        from .save_manager import _serialize_full_state
+
+        snapshot = _serialize_full_state(self)
         self.history.append(json.dumps(snapshot))
         # Keep last 20 snapshots
         if len(self.history) > 20:
@@ -797,6 +1211,7 @@ class GameState:
             "mass_marketeer": self.mass_marketeer,
             "employee_pile": self.employee_pile,
             "milestones_claimed": self.milestones_claimed,
+            "milestones_claimed_this_round": self.milestones_claimed_this_round,
             "restaurants": self.restaurants,
             "max_restaurants": self.max_restaurants,
             "current_front_card": self.current_front_card,
@@ -816,7 +1231,13 @@ class GameState:
             "no_driveins_this_turn": self.no_driveins_this_turn,
             "milestones_unavailable": self.milestones_unavailable,
             "pending_milestone_checks": self.pending_milestone_checks,
+            "milestones_expired": self.milestones_expired,
+            "milestones_turn2_tokens": self.milestones_turn2_tokens,
             "phase_before_milestone": self.phase_before_milestone,
+            "active_milestones": [
+                {"key": m["key"], "label_en": m["label_en"], "label_es": m["label_es"]}
+                for m in get_active_milestones(self.modules)
+            ],
             "pending_competition_actions": self.pending_competition_actions,
             "phase_after_competition": self.phase_after_competition,
             "chain_movie_star": self.chain_movie_star,

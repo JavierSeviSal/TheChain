@@ -457,6 +457,9 @@ function collectInputData() {
             if (field.checked) data[name].push(field.value);
         } else if (field.type === "number") {
             data[name] = parseInt(field.value) || 0;
+        } else if (field.tagName === "SELECT" && /^campaign_slot_/.test(name)) {
+            // Campaign number selects should be sent as integers
+            data[name] = parseInt(field.value) || 0;
         } else {
             data[name] = field.value;
         }
@@ -467,11 +470,89 @@ function collectInputData() {
 
 function showInputPrompt(input) {
     const prompt = currentLang === "es" ? (input.prompt_es || input.prompt) : input.prompt;
-    $("#input-prompt").textContent = prompt;
+
+    const promptEl = $("#input-prompt");
+    // For competition card acknowledgment, use innerHTML to support line breaks
+    if (input.type === "acknowledge_competition_card") {
+        const isWarm = input.card_type === "warm";
+        const willResolve = input.will_resolve;
+        const matchClass = willResolve ? "comp-prompt-match" : "comp-prompt-nomatch";
+        const icon = isWarm ? "🔴" : "🟢";
+        // Replace \n with <br> for proper line breaks
+        const htmlPrompt = prompt.replace(/\n/g, "<br>");
+        promptEl.innerHTML = `<div class="comp-step-prompt ${matchClass}">${icon} ${htmlPrompt}</div>`;
+    } else {
+        promptEl.textContent = prompt;
+    }
 
     const container = $("#input-fields");
     container.innerHTML = "";
     inputOverlay.dataset.inputType = input.type;
+
+    // ── Milestone roundup — custom two-section UI ─────────────────────
+    if (input.type === "milestone_player_roundup") {
+        const chainClaimed = input.chain_claimed || [];
+        const available = input.available || [];
+
+        if (chainClaimed.length > 0) {
+            const notice = document.createElement("div");
+            notice.className = "milestone-roundup-section milestone-roundup-chain";
+            const heading = document.createElement("p");
+            heading.className = "milestone-roundup-heading";
+            heading.textContent = currentLang === "es"
+                ? "La Cadena reclamó estos hitos. Marca los que TÚ TAMBIÉN reclamaste (reclamación conjunta — no coloca ficha X):"
+                : "The Chain claimed these milestones. Check any you ALSO claimed (joint claim — no X token needed):";
+            notice.appendChild(heading);
+
+            const group = document.createElement("div");
+            group.className = "checkbox-group";
+            chainClaimed.forEach(m => {
+                const lbl = document.createElement("label");
+                lbl.className = "milestone-roundup-option chain-claimed-option";
+                const cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.value = m.key;
+                cb.dataset.fieldName = "chain_jointly_claimed";
+                const labelText = currentLang === "es" ? m.label_es : m.label_en;
+                lbl.appendChild(cb);
+                lbl.appendChild(document.createTextNode(" 🏆 " + labelText));
+                group.appendChild(lbl);
+            });
+            notice.appendChild(group);
+            container.appendChild(notice);
+        }
+
+        if (available.length > 0) {
+            const section = document.createElement("div");
+            section.className = "milestone-roundup-section milestone-roundup-available";
+            const heading = document.createElement("p");
+            heading.className = "milestone-roundup-heading";
+            heading.textContent = currentLang === "es"
+                ? "¿Reclamaste alguno de estos hitos disponibles este turno?"
+                : "Did you claim any of these available milestones this round?";
+            section.appendChild(heading);
+
+            const group = document.createElement("div");
+            group.className = "checkbox-group";
+            available.forEach(m => {
+                const lbl = document.createElement("label");
+                lbl.className = "milestone-roundup-option";
+                const cb = document.createElement("input");
+                cb.type = "checkbox";
+                cb.value = m.key;
+                cb.dataset.fieldName = "player_claimed";
+                const labelText = currentLang === "es" ? m.label_es : m.label_en;
+                lbl.appendChild(cb);
+                lbl.appendChild(document.createTextNode(" " + labelText));
+                group.appendChild(lbl);
+            });
+            section.appendChild(group);
+            container.appendChild(section);
+        }
+
+        showOverlay(inputOverlay);
+        return;
+    }
 
     // Track field definitions for dynamic dependencies
     let mostDemandField = null;
@@ -501,10 +582,20 @@ function showInputPrompt(input) {
             sel.dataset.fieldName = f.name;
             (f.options || []).forEach(opt => {
                 const o = document.createElement("option");
-                o.value = opt;
-                o.textContent = foodLabel(opt);
+                // Support both {value, label} objects and plain strings
+                if (typeof opt === "object" && opt.value !== undefined) {
+                    o.value = opt.value;
+                    o.textContent = opt.label || opt.value;
+                } else {
+                    o.value = opt;
+                    o.textContent = foodLabel(opt);
+                }
                 sel.appendChild(o);
             });
+            // Pre-select default if provided
+            if (f.default !== undefined) {
+                sel.value = String(f.default);
+            }
             div.appendChild(sel);
         } else if (f.type === "multiselect") {
             const group = document.createElement("div");
@@ -526,7 +617,11 @@ function showInputPrompt(input) {
         if (f.name === "most_demand_items") {
             mostDemandField = f;
             mostDemandDiv = div;
-            div.style.display = "none"; // hidden until 2+ items checked above
+            // Only hide if there is also an items_with_demand field (two-step all_demand flow)
+            const hasItemsWithDemand = (input.fields || []).some(ff => ff.name === "items_with_demand");
+            if (hasItemsWithDemand) {
+                div.style.display = "none"; // hidden until 2+ items checked above
+            }
         }
 
         container.appendChild(div);
@@ -612,9 +707,15 @@ function refreshUI() {
     updateLog();
 
     // Advance button — context-aware label
-    const labelPhase = (gameState.phase === "waiting_for_input" && gameState.next_phase_after_input)
-        ? gameState.next_phase_after_input
-        : gameState.phase;
+    let labelPhase;
+    if (gameState.phase === "waiting_for_input" && gameState.next_phase_after_input) {
+        labelPhase = gameState.next_phase_after_input;
+    } else if (gameState.phase === "waiting_for_input" && gameState.phase_after_competition) {
+        // Paused after a competition card resolution — show "Continue ▶"
+        labelPhase = "continue_competition";
+    } else {
+        labelPhase = gameState.phase;
+    }
     btnAdvance.textContent = getAdvanceLabel(labelPhase);
     if (gameState.phase === "game_over") {
         btnAdvance.disabled = true;
@@ -675,7 +776,16 @@ function updateCompetitionCard() {
 
     // Style the label
     const typeLabel = isWarm ? "🔴 Warm" : "🟢 Cool";
-    label.textContent = `${typeLabel} #${card.card_number}`;
+    const willResolve = card.will_resolve;
+    const resolved = card.resolved;
+
+    let statusText = "";
+    if (resolved) {
+        statusText = " — ✅ Resolved";
+    } else if (willResolve === false) {
+        statusText = " — ❌ Not matched";
+    }
+    label.textContent = `${typeLabel} #${card.card_number}${statusText}`;
     label.className = "card-label " + (isWarm ? "warm-label" : "cool-label");
 }
 
@@ -687,7 +797,7 @@ function updateTracks() {
     const rtPos = tracks.recruit_train.position;
     $("#rt-slots-value").textContent = tracks.open_slots;
     $("#rt-food-value").textContent = `×${tracks.food_amount}`;
-    $("#rt-info").textContent = `(${tracks.open_slots} ${t("open_slots")}, ${t("food")} ×${tracks.food_amount})`;
+    // $("#rt-info").textContent = `(${tracks.open_slots} ${t("open_slots")}, ${t("food")} ×${tracks.food_amount})`;
     renderTrackBar("rt-markers", 1, 4, rtPos, [
         "1", "2", "3", "4"
     ], 2); // shuffleAfter=2 inserts a SHUFFLE divider after position 2
@@ -780,9 +890,12 @@ function updateMarketeers() {
             if (slot.is_busy) {
                 const itemIcon = FOOD_ICONS[slot.market_item] || "";
                 const itemLabel = slot.market_item ? `${itemIcon} ${t(slot.market_item)}` : "";
-                const campNum = slot.campaign_number != null ? `#${slot.campaign_number}` : "";
+                // Rural Marketeer: no campaign number — show "Giant Billboard"
+                const campNum = slot.campaign_number != null
+                    ? `#${slot.campaign_number}`
+                    : (slot.marketeer === "Rural Marketeer" ? "🪧" : "");
                 const campLeft = slot.campaigns_left === -1
-                    ? "∞"
+                    ? "∞ " + (currentLang === "es" ? "(permanente)" : "(permanent)")
                     : (slot.campaigns_left != null
                         ? `${slot.campaigns_left} ${currentLang === "es" ? "rest." : "left"}`
                         : "");
@@ -802,8 +915,8 @@ function updateMarketeers() {
     });
     if (gameState.mass_marketeer) {
         const div = document.createElement("div");
-        div.className = "slot-item";
-        div.innerHTML = `<span class="slot-num">M</span><span class="slot-name">Mass Marketeer</span>`;
+        div.className = "slot-item slot-mass";
+        div.innerHTML = `<span class="slot-num">M</span><span class="slot-name">Mass Marketeer</span><span class="slot-status">${currentLang === "es" ? "Listo (2x campañas)" : "Ready (2x campaigns)"}</span>`;
         container.appendChild(div);
     }
 }
@@ -825,12 +938,61 @@ function updateEmployees() {
 function updateMilestones() {
     const container = $("#milestone-list");
     container.innerHTML = "";
-    (gameState.milestones_claimed || []).forEach(m => {
-        const tag = document.createElement("span");
-        tag.className = "tag milestone";
-        tag.textContent = m.replace(/_/g, " ");
-        container.appendChild(tag);
-    });
+
+    const claimed = new Set(gameState.milestones_claimed || []);
+    const unavailable = new Set(gameState.milestones_unavailable || []);
+    const expired = new Set(gameState.milestones_expired || []);
+    const turn2tokens = new Set(gameState.milestones_turn2_tokens || []);
+    const activeMilestones = gameState.active_milestones || [];
+
+    if (activeMilestones.length > 0) {
+        // Show full milestone board with status indicators
+        activeMilestones.forEach(m => {
+            const tag = document.createElement("span");
+            const label = currentLang === "es" ? m.label_es : m.label_en;
+            if (claimed.has(m.key)) {
+                tag.className = "tag milestone";
+                tag.textContent = "🏆 " + label;
+                tag.title = currentLang === "es" ? "Reclamado por La Cadena" : "Claimed by The Chain";
+            } else if (unavailable.has(m.key)) {
+                tag.className = "tag milestone-unavailable";
+                tag.textContent = "👤 " + label;
+                tag.title = currentLang === "es" ? "Reclamado por el jugador" : "Claimed by player";
+                tag.style.textDecoration = "line-through";
+                tag.style.opacity = "0.5";
+            } else if (expired.has(m.key)) {
+                tag.className = "tag milestone-expired";
+                tag.textContent = "✖ " + label;
+                tag.title = currentLang === "es" ? "Expirado" : "Expired";
+            } else {
+                tag.className = "tag milestone-available";
+                tag.textContent = label;
+                if (turn2tokens.has(m.key)) {
+                    tag.textContent = "⏰ " + label;
+                    tag.title = currentLang === "es" ? "Eliminar después del turno 2" : "Remove after turn 2";
+                } else {
+                    tag.title = currentLang === "es" ? "Disponible" : "Available";
+                }
+            }
+            container.appendChild(tag);
+        });
+    } else {
+        // Fallback: show claimed and expired like before
+        (gameState.milestones_claimed || []).forEach(m => {
+            const tag = document.createElement("span");
+            tag.className = "tag milestone";
+            tag.textContent = "🏆 " + m.replace(/_/g, " ");
+            container.appendChild(tag);
+        });
+        (gameState.milestones_expired || []).forEach(m => {
+            const tag = document.createElement("span");
+            tag.className = "tag milestone-expired";
+            tag.textContent = "✖ " + m.replace(/_/g, " ");
+            tag.title = "Expired";
+            container.appendChild(tag);
+        });
+    }
+
     if (container.children.length === 0) {
         container.innerHTML = `<span class="text-muted">—</span>`;
     }
@@ -973,21 +1135,22 @@ function getAdvanceLabel(nextPhase) {
 
     // Non-worktime phases — standard labels
     const labels = {
-        setup:               es ? "Iniciar Partida ▶"           : "Begin Game ▶",
-        restructuring:       es ? "Iniciar Reestructuración ▶"  : "Begin Restructuring ▶",
-        order_of_business:   es ? "Resolver Orden de Juego ▶"   : "Resolve Order of Business ▶",
-        recruit_train:       es ? "Iniciar Reclutar ▶"          : "Begin Recruit & Train ▶",
-        initiate_marketing:  es ? "Iniciar Marketing ▶"         : "Initiate Marketing ▶",
-        get_food:            es ? "Resolver Comida ▶"           : "Resolve Get Food ▶",
-        develop:             es ? "Resolver Desarrollar ▶"      : "Resolve Develop ▶",
-        lobby:               es ? "Resolver Lobby ▶"            : "Resolve Lobby ▶",
-        expand_chain:        es ? "Resolver Expandir ▶"         : "Resolve Expand Chain ▶",
-        dinnertime:          es ? "Iniciar Cena ▶"              : "Begin Dinnertime ▶",
-        payday:              es ? "Resolver Día de Pago ▶"      : "Resolve Payday ▶",
-        marketing_campaigns: es ? "Resolver Campañas ▶"         : "Resolve Campaigns ▶",
-        cleanup:             es ? "Limpieza y Fin de Turno ▶"   : "Cleanup & End Turn ▶",
-        game_over:           es ? "🏁 Partida Terminada"        : "🏁 Game Over",
-        waiting_for_input:   es ? "Esperando..."                : "Waiting...",
+        setup:                 es ? "Iniciar Partida ▶"           : "Begin Game ▶",
+        restructuring:         es ? "Iniciar Reestructuración ▶"  : "Begin Restructuring ▶",
+        order_of_business:     es ? "Resolver Orden de Juego ▶"   : "Resolve Order of Business ▶",
+        recruit_train:         es ? "Iniciar Reclutar ▶"          : "Begin Recruit & Train ▶",
+        initiate_marketing:    es ? "Iniciar Marketing ▶"         : "Initiate Marketing ▶",
+        get_food:              es ? "Resolver Comida ▶"           : "Resolve Get Food ▶",
+        develop:               es ? "Resolver Desarrollar ▶"      : "Resolve Develop ▶",
+        lobby:                 es ? "Resolver Lobby ▶"            : "Resolve Lobby ▶",
+        expand_chain:          es ? "Resolver Expandir ▶"         : "Resolve Expand Chain ▶",
+        dinnertime:            es ? "Iniciar Cena ▶"              : "Begin Dinnertime ▶",
+        payday:                es ? "Resolver Día de Pago ▶"      : "Resolve Payday ▶",
+        marketing_campaigns:   es ? "Resolver Campañas ▶"         : "Resolve Campaigns ▶",
+        cleanup:               es ? "Limpieza y Fin de Turno ▶"   : "Cleanup & End Turn ▶",
+        game_over:             es ? "🏁 Partida Terminada"        : "🏁 Game Over",
+        waiting_for_input:     es ? "Esperando..."                : "Waiting...",
+        continue_competition:  es ? "Continuar ▶"                 : "Continue ▶",
     };
     return labels[nextPhase] || (es ? "Siguiente Fase ▶" : "Next Phase ▶");
 }
