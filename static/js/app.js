@@ -728,10 +728,12 @@ function refreshUI() {
             showInputPrompt(gameState.pending_input);
         } else {
             // Input resolved but phase transition delayed — let user Advance
+            hideOverlay(inputOverlay);
             btnAdvance.disabled = false;
             btnAdvance.classList.add("pulse");
         }
     } else {
+        hideOverlay(inputOverlay);
         btnAdvance.disabled = false;
         btnAdvance.classList.add("pulse");
     }
@@ -1159,13 +1161,22 @@ function foodLabel(item) {
     return (FOOD_ICONS[item] || "") + " " + t(item);
 }
 
+// Regex to capitalize food/drink item names in status messages
+const _FOOD_NAMES_RE = new RegExp(
+    "\\b(" + Object.keys(FOOD_ICONS).join("|") + ")\\b", "gi"
+);
+
 function setStatus(msg) {
+    if (msg) {
+        msg = msg.replace(_FOOD_NAMES_RE, m => m.charAt(0).toUpperCase() + m.slice(1));
+    }
     statusMsg.textContent = msg || "";
 }
 
 // ─── Actions ───────────────────────────────────────────────────────────
 
 async function doUndo() {
+    hideOverlay(inputOverlay);          // dismiss any blocking overlay immediately
     const result = await API.post("/api/game/undo");
     if (result.status === "ok") {
         await refreshState();

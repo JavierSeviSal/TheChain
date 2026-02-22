@@ -940,6 +940,13 @@ PRODUCED_ITEM_MILESTONES: dict[str, str] = {
 # Drink items for marketing milestone detection
 DRINK_ITEMS: set[str] = {"beer", "lemonade", "softdrink"}
 
+# Employees that gain extra copies when a module is active.
+# key = employee name, value = {"module": <module key>, "extra": <additional copies>}
+# Default max copies per employee is 1; entries here raise it to 1 + extra.
+EMPLOYEE_EXTRA_COPIES: dict[str, dict] = {
+    "Luxuries Manager": {"module": "coffee", "extra": 1},
+}
+
 
 def get_campaign_type(campaign_number: int) -> Optional[str]:
     """Return the campaign type (radio/airplane/mailbox/billboard/gourmet) for a campaign number."""

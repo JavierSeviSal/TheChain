@@ -29,6 +29,7 @@ from .models import (
     SOLD_ITEM_MILESTONES,
     PRODUCED_ITEM_MILESTONES,
     DRINK_ITEMS,
+    EMPLOYEE_EXTRA_COPIES,
     get_campaign_type,
     get_valid_campaign_numbers,
     get_active_milestones,
@@ -251,14 +252,21 @@ class GameEngine:
         return result
 
     def _chain_has_employee(self, name: str) -> bool:
-        """Check if The Chain already has this employee/Brand Director."""
-        if name in self.state.employee_pile:
-            return True
-        if any(s.marketeer == name for s in self.state.marketeer_slots):
-            return True
-        if any(c["name"] == name for c in self.state.pending_employee_checks):
-            return True
-        return False
+        """Check if The Chain already has this employee/Brand Director.
+
+        Most employees are unique (max 1 copy).  Some employees allow
+        extra copies when a module is active (see EMPLOYEE_EXTRA_COPIES).
+        """
+        count = self.state.employee_pile.count(name)
+        count += sum(1 for s in self.state.marketeer_slots if s.marketeer == name)
+        count += sum(1 for c in self.state.pending_employee_checks if c["name"] == name)
+
+        max_copies = 1
+        extra = EMPLOYEE_EXTRA_COPIES.get(name)
+        if extra and self.state.modules.get(extra["module"], False):
+            max_copies += extra["extra"]
+
+        return count >= max_copies
 
     def _prompt_pending_employee_checks(self, result: dict) -> dict:
         """If employee availability checks are pending, intercept with a prompt."""
@@ -1282,6 +1290,80 @@ class GameEngine:
             )
             return msg
 
+    # ── Competition card helpers (DRY) ─────────────────────────────
+
+    def _apply_single_food_adj(self, adj: dict, food_amount: int) -> Optional[str]:
+        """Apply one non-demand food adjustment. Returns a log message."""
+        item = adj["item"]
+        multiplier = adj.get("amount", 1)
+        module = adj.get("module")
+        fallback = adj.get("fallback")
+        actual_amount = food_amount * multiplier
+
+        if module and not self.state.modules.get(module, False):
+            if fallback:
+                self.state.inventory.add(fallback, actual_amount)
+                return f"+{actual_amount} {fallback} (fallback, {module} not in play)"
+            else:
+                return f"Skipped {item} ({module} not in play)"
+        elif not _is_item_available(item, self.state.modules):
+            return f"Skipped {item} (module not in play)"
+        else:
+            self.state.inventory.add(item, actual_amount)
+            return f"+{actual_amount} {item}"
+
+    def _apply_inventory_boost(self) -> Optional[str]:
+        """Apply inventory boost. Returns a log message."""
+        boost_details = self.state.inventory.inventory_boost()
+        if boost_details:
+            return f"INVENTORY BOOST: {', '.join(boost_details)}"
+        return "INVENTORY BOOST: no items on bottom row."
+
+    def _apply_track_adjustments(self, track_adjustments: list) -> list[str]:
+        """Apply a list of track adjustments in order. Returns log messages."""
+        msgs: list[str] = []
+        for ta in track_adjustments:
+            ta_type = ta["type"]
+            ta_value = ta["value"]
+
+            if ta_type == "move_distance":
+                old, new, _ = self.state.tracks.price_distance.move(ta_value)
+                msgs.append(f"Distance: {old}→{new}")
+                self.state.log(
+                    f"Competition card: Price+Distance {old} → {new}", "competition"
+                )
+                self._check_track_milestones()
+            elif ta_type == "move_waitress":
+                old, new, _ = self.state.tracks.waitresses.move(ta_value)
+                msgs.append(f"Waitress: {old}→{new}")
+                self.state.log(
+                    f"Competition card: Waitresses {old} → {new}", "competition"
+                )
+            elif ta_type == "move_recruit_train":
+                old, new, crossed = self.state.tracks.recruit_train.move(ta_value)
+                msgs.append(f"R&T: {old}→{new}")
+                self.state.log(
+                    f"Competition card: Recruit & Train {old} → {new}",
+                    "competition",
+                )
+                self._check_track_milestones()
+                if crossed:
+                    self.state.reshuffle_deck()
+                    msgs.append("ACTION DECK SHUFFLED!")
+                    self.state.log(
+                        "SHUFFLE triggered by R&T track crossing!", "competition"
+                    )
+                    # Ensure no competition card on top after shuffle
+                    top = self.state.action_deck.peek()
+                    while top and top.card_type in (CardType.WARM, CardType.COOL):
+                        self.state.reshuffle_deck()
+                        self.state.log(
+                            "Competition card on top after shuffle — reshuffling.",
+                            "competition",
+                        )
+                        top = self.state.action_deck.peek()
+        return msgs
+
     def _resolve_competition_card(self, card: Card) -> str:
         """Resolve a competition card's effect.
 
@@ -1289,6 +1371,12 @@ class GameEngine:
         Deferred effects that need user interaction (demand prompts,
         restaurant placement) are queued in pending_competition_actions
         and processed after the restructuring loop finishes.
+
+        When a demand-based food adjustment (all_demand / most_demand)
+        is encountered, ALL subsequent actions (remaining food items,
+        inventory boost, track adjustments) are bundled into the
+        deferred action so they execute in the correct card order
+        after the user provides demand info.
 
         Order of actions follows the card descriptions:
           Cool: effect_type → inventory_drop → inventory_loss → tracks
@@ -1366,39 +1454,43 @@ class GameEngine:
             )
 
         # ── Step 2: Food adjustments (warm cards) ─────────────────────
-        for adj in effect.food_adjustments:
+        deferred_remaining = False
+        for i, adj in enumerate(effect.food_adjustments):
             item = adj["item"]
             multiplier = adj.get("amount", 1)
-            module = adj.get("module")
-            fallback = adj.get("fallback")
 
             if item in ("all_demand", "most_demand"):
+                # Defer this demand action AND all subsequent steps so
+                # they execute in card order after the user responds.
+                remaining_food = [
+                    a
+                    for a in effect.food_adjustments[i + 1 :]
+                    if a["item"] not in ("all_demand", "most_demand")
+                ]
                 self.state.pending_competition_actions.append(
                     {
                         "action": "competition_demand_info",
                         "demand_type": item,
                         "multiplier": multiplier,
                         "food_amount": food_amount,
+                        "remaining_food_adjustments": remaining_food,
+                        "inventory_boost": effect.inventory_boost,
+                        "track_adjustments": [
+                            {"type": ta["type"], "value": ta["value"]}
+                            for ta in effect.track_adjustments
+                        ],
                     }
                 )
                 msgs.append(
-                    f"{item.replace('_', ' ').title()}: will ask for demand info"
+                    f"{item.replace('_', ' ').title()}: will ask for demand info "
+                    f"(remaining actions deferred)"
                 )
+                deferred_remaining = True
+                break
             else:
-                actual_amount = food_amount * multiplier
-                if module and not self.state.modules.get(module, False):
-                    if fallback:
-                        self.state.inventory.add(fallback, actual_amount)
-                        msgs.append(
-                            f"+{actual_amount} {fallback} (fallback, {module} not in play)"
-                        )
-                    else:
-                        msgs.append(f"Skipped {item} ({module} not in play)")
-                elif not _is_item_available(item, self.state.modules):
-                    msgs.append(f"Skipped {item} (module not in play)")
-                else:
-                    self.state.inventory.add(item, actual_amount)
-                    msgs.append(f"+{actual_amount} {item}")
+                msg = self._apply_single_food_adj(adj, food_amount)
+                if msg:
+                    msgs.append(msg)
 
         # ── Step 3: Inventory drop (cool cards, before inventory loss) ─
         if effect.inventory_drop:
@@ -1413,54 +1505,14 @@ class GameEngine:
             self.state.inventory.clear_item(item)
             msgs.append(f"INVENTORY LOSS: all {item} removed.")
 
-        # ── Step 5: Inventory boost (warm cards) ──────────────────────
-        if effect.inventory_boost:
-            boost_details = self.state.inventory.inventory_boost()
-            if boost_details:
-                msgs.append(f"INVENTORY BOOST: {', '.join(boost_details)}")
-            else:
-                msgs.append("INVENTORY BOOST: no items on bottom row.")
+        # ── Step 5 & 6: Only if not deferred by a demand action ───────
+        if not deferred_remaining:
+            # ── Step 5: Inventory boost (warm cards) ──────────────────
+            if effect.inventory_boost:
+                msgs.append(self._apply_inventory_boost())
 
-        # ── Step 6: Track adjustments (always last) ───────────────────
-        for ta in effect.track_adjustments:
-            ta_type = ta["type"]
-            ta_value = ta["value"]
-
-            if ta_type == "move_distance":
-                old, new, _ = self.state.tracks.price_distance.move(ta_value)
-                msgs.append(f"Distance: {old}→{new}")
-                self.state.log(
-                    f"Competition card: Price+Distance {old} → {new}", "competition"
-                )
-                self._check_track_milestones()
-            elif ta_type == "move_waitress":
-                old, new, _ = self.state.tracks.waitresses.move(ta_value)
-                msgs.append(f"Waitress: {old}→{new}")
-                self.state.log(
-                    f"Competition card: Waitresses {old} → {new}", "competition"
-                )
-            elif ta_type == "move_recruit_train":
-                old, new, crossed = self.state.tracks.recruit_train.move(ta_value)
-                msgs.append(f"R&T: {old}→{new}")
-                self.state.log(
-                    f"Competition card: Recruit & Train {old} → {new}", "competition"
-                )
-                self._check_track_milestones()
-                if crossed:
-                    self.state.reshuffle_deck()
-                    msgs.append("ACTION DECK SHUFFLED!")
-                    self.state.log(
-                        "SHUFFLE triggered by R&T track crossing!", "competition"
-                    )
-                    # Ensure no competition card on top after shuffle
-                    top = self.state.action_deck.peek()
-                    while top and top.card_type in (CardType.WARM, CardType.COOL):
-                        self.state.reshuffle_deck()
-                        self.state.log(
-                            "Competition card on top after shuffle — reshuffling.",
-                            "competition",
-                        )
-                        top = self.state.action_deck.peek()
+            # ── Step 6: Track adjustments (always last) ───────────────
+            msgs.extend(self._apply_track_adjustments(effect.track_adjustments))
 
         result = " | ".join(msgs)
         self.state.log(
@@ -1570,6 +1622,13 @@ class GameEngine:
                 "multiplier": multiplier,
                 "food_amount": food_amount,
                 "fields": fields,
+                # Carry deferred actions so they execute in card order
+                # after the user provides demand info.
+                "remaining_food_adjustments": action.get(
+                    "remaining_food_adjustments", []
+                ),
+                "inventory_boost": action.get("inventory_boost", False),
+                "track_adjustments": action.get("track_adjustments", []),
             }
             self.state.phase = GamePhase.WAITING_FOR_INPUT
             return {
@@ -1693,7 +1752,12 @@ class GameEngine:
         }
 
     def _resolve_competition_demand(self, input_data: dict) -> dict:
-        """Resolve demand info from a competition card effect."""
+        """Resolve demand info from a competition card effect.
+
+        After applying demand-based food, this also applies any
+        remaining actions (food adjustments, inventory boost, tracks)
+        that were deferred to preserve the card's intended action order.
+        """
         pending = self.state.pending_input or {}
         demand_type = input_data.get("demand_type") or pending.get(
             "demand_type", "most_demand"
@@ -1740,6 +1804,24 @@ class GameEngine:
 
         msg = f"Competition card food: {', '.join(added) if added else 'none'}"
         self.state.log(msg, "competition")
+
+        # ── Apply deferred remaining actions in card order ────────────
+        remaining_food = pending.get("remaining_food_adjustments", [])
+        for adj in remaining_food:
+            result = self._apply_single_food_adj(adj, food_amount)
+            if result:
+                self.state.log(f"Competition deferred food: {result}", "competition")
+
+        if pending.get("inventory_boost", False):
+            boost_msg = self._apply_inventory_boost()
+            self.state.log(f"Competition deferred: {boost_msg}", "competition")
+
+        deferred_tracks = pending.get("track_adjustments", [])
+        if deferred_tracks:
+            track_msgs = self._apply_track_adjustments(deferred_tracks)
+            for tm in track_msgs:
+                self.state.log(f"Competition deferred track: {tm}", "competition")
+
         return self._resume_after_competition()
 
     def _resolve_competition_demand_tiebreak(self, input_data: dict) -> dict:
@@ -1921,19 +2003,21 @@ class GameEngine:
                     target, self.state.modules
                 ):
                     # Base-only milestone with no Expansion equivalent — skip
+                    label = self.MILESTONE_LABELS.get(target, (target,))[0]
                     self.state.log(
-                        f"Milestone {target} not in Expansion set. Skipped.",
+                        f"Milestone {label} not in Expansion set. Skipped.",
                         "milestone",
                     )
-                    return f"Milestone {target} not in active set"
+                    return f"Milestone {label} not in active set"
+            label = self.MILESTONE_LABELS.get(actual_target, (actual_target,))[0]
             if is_milestone_in_active_set(actual_target, self.state.modules):
                 self._try_queue_milestone(actual_target)
             else:
                 self.state.log(
-                    f"Milestone {actual_target} not in active set. Skipped.",
+                    f"Milestone {label} not in active set. Skipped.",
                     "milestone",
                 )
-            return f"Milestone: {actual_target}"
+            return f"Milestone: {label}"
         elif action_type == "get_food":
             food_amount = self.state.tracks.get_food_amount()
             self.state.inventory.add(target, food_amount)
@@ -2956,17 +3040,12 @@ class GameEngine:
                     f"permanent campaign ({slot.market_item}, {camp_num}).",
                     "marketing_campaigns",
                 )
-                msgs.append(f"{slot.marketeer} (slot {slot.slot_number}): permanent")
             else:
                 self.state.log(
                     f"{slot.marketeer} (slot {slot.slot_number}): "
                     f"campaign fires ({slot.market_item}, {camp_num}), "
                     f"{slot.campaigns_left} duration marker(s) before decrement.",
                     "marketing_campaigns",
-                )
-                msgs.append(
-                    f"{slot.marketeer} (slot {slot.slot_number}): "
-                    f"{slot.market_item} {camp_num}"
                 )
 
         # ── Round 2: Mass Marketeer extra campaign round ─────────────────
@@ -2987,12 +3066,20 @@ class GameEngine:
                     f"EXTRA campaign fires ({slot.market_item}, {camp_num}).",
                     "marketing_campaigns",
                 )
-            msgs.append("Mass Marketeer: all campaigns fire a 2nd time")
 
         # ── Decrement duration markers & expire (once, after all rounds) ─
+        # Build one combined message per slot: "Name (slot N): item #num, X left"
         for slot in active_slots:
+            camp_num = (
+                f"#{slot.campaign_number}"
+                if slot.campaign_number is not None
+                else "Giant Billboard"
+            )
+            slot_prefix = f"{slot.marketeer} (slot {slot.slot_number})"
+
             # Eternal campaigns (Rural Marketeer) — never decrement
             if slot.campaigns_left == -1:
+                msgs.append(f"{slot_prefix}: {slot.market_item} {camp_num}, permanent")
                 continue
 
             slot.campaigns_left -= 1
@@ -3012,11 +3099,11 @@ class GameEngine:
                         "marketing_campaigns",
                     )
                     msgs.append(
-                        f"{expired_name} (slot {slot.slot_number}) expired — to employee pile"
+                        f"{slot_prefix}: {slot.market_item} {camp_num}, expired — to employee pile"
                     )
                 else:
                     msgs.append(
-                        f"{expired_name} (slot {slot.slot_number}) expired — removed"
+                        f"{slot_prefix}: {slot.market_item} {camp_num}, expired — removed"
                     )
                 slot.marketeer = None
                 slot.is_busy = False
@@ -3033,9 +3120,13 @@ class GameEngine:
                     "marketing_campaigns",
                 )
                 msgs.append(
-                    f"{slot.marketeer} (slot {slot.slot_number}): "
+                    f"{slot_prefix}: {slot.market_item} {camp_num}, "
                     f"{slot.campaigns_left} left"
                 )
+
+        # Mass Marketeer note (appended after per-slot summaries)
+        if has_mass:
+            msgs.append("Mass Marketeer: All campaigns fired twice")
 
         # ── Return Mass Marketeer to employee pool ───────────────────────
         if has_mass:
@@ -3335,6 +3426,24 @@ class GameEngine:
 
         self.state = _deserialize_full_state(snapshot)
         self.state.history = history
+
+        # Clear any pending input / overlay state so undo never lands on a
+        # blocking prompt.  Re-advancing will regenerate the prompt cleanly.
+        self.state.pending_input = None
+        self.state.next_phase_after_input = None
+        self.state.pending_employee_checks = []
+        self.state.pending_milestone_checks = []
+        self.state.pending_competition_actions = []
+        self.state.phase_before_milestone = None
+        self.state.phase_before_employee_check = None
+        self.state.phase_after_competition = None
+
+        if self.state.phase == GamePhase.WAITING_FOR_INPUT:
+            # Roll back to the display phase (the phase shown to the user)
+            # so the player can re-advance into the prompt from scratch.
+            fallback = self.state.display_phase or "restructuring"
+            self.state.phase = GamePhase(fallback)
+
         self.state.log("Undo performed.", "system")
 
         return {"status": "ok", "message": "Last action undone."}
