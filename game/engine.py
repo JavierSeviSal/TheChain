@@ -814,6 +814,9 @@ class GameEngine:
                 )
                 msg = f"{name} not available (player has it)"
 
+            # Update the R&T result message for this employee
+            self._update_rt_employee_result(name, msg)
+
             # If more employee checks pending, prompt next one
             if self.state.pending_employee_checks:
                 return self._prompt_pending_employee_checks(
@@ -1586,6 +1589,7 @@ class GameEngine:
                 fi.value
                 for fi in FoodItem
                 if _is_item_available(fi.value, self.state.modules)
+                and fi != FoodItem.COFFEE
             ]
 
             if demand_type == "most_demand":
@@ -1948,6 +1952,23 @@ class GameEngine:
         # All actions done, no pending prompts
         return self._finalize_rt_complete()
 
+    def _update_rt_employee_result(self, name: str, msg: str) -> None:
+        """Replace the 'pending availability' entry for *name* in rt_result_msgs
+        with the actual outcome *msg*, and refresh rt_phase_message."""
+        pending_label = f"{name}: pending availability"
+        for i, m in enumerate(self.state.rt_result_msgs):
+            if m == pending_label:
+                self.state.rt_result_msgs[i] = msg
+                break
+        # Rebuild rt_phase_message so subsequent prompts show updated text
+        if self.state.rt_result_msgs:
+            hint = self._worktime_turn_hint()
+            self.state.rt_phase_message = (
+                f"Recruit & Train ({self.state.rt_open_slots} open slots). "
+                + " | ".join(self.state.rt_result_msgs)
+                + hint
+            )
+
     def _finalize_rt_partial(self) -> dict:
         """Build an interim R&T result when pausing for employee input."""
         open_slots = self.state.rt_open_slots
@@ -2276,6 +2297,7 @@ class GameEngine:
                 fi.value
                 for fi in FoodItem
                 if _is_item_available(fi.value, self.state.modules)
+                and fi != FoodItem.COFFEE
             ]
             if demand_type == "most_demand":
                 # Simplified: ask only which item(s) have the MOST demand
