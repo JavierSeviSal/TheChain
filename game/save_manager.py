@@ -160,6 +160,11 @@ def _serialize_full_state(state: GameState) -> dict:
         "phase_before_milestone": state.phase_before_milestone,
         "pending_employee_checks": [c.copy() for c in state.pending_employee_checks],
         "phase_before_employee_check": state.phase_before_employee_check,
+        "pending_rt_actions": [a.copy() for a in state.pending_rt_actions],
+        "rt_result_msgs": list(state.rt_result_msgs),
+        "rt_phase_message": state.rt_phase_message,
+        "rt_pending_stars": list(state.rt_pending_stars),
+        "rt_open_slots": state.rt_open_slots,
         "pending_competition_actions": [
             a.copy() for a in state.pending_competition_actions
         ],
@@ -292,6 +297,11 @@ def _deserialize_full_state(data: dict) -> GameState:
     state.phase_before_milestone = data.get("phase_before_milestone")
     state.pending_employee_checks = data.get("pending_employee_checks", [])
     state.phase_before_employee_check = data.get("phase_before_employee_check")
+    state.pending_rt_actions = data.get("pending_rt_actions", [])
+    state.rt_result_msgs = data.get("rt_result_msgs", [])
+    state.rt_phase_message = data.get("rt_phase_message")
+    state.rt_pending_stars = data.get("rt_pending_stars", [])
+    state.rt_open_slots = data.get("rt_open_slots", 0)
     state.pending_competition_actions = data.get("pending_competition_actions", [])
     state.phase_after_competition = data.get("phase_after_competition")
     state.restaurants = data.get("restaurants", [])

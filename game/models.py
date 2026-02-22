@@ -1099,6 +1099,17 @@ class GameState:
     # Phase to restore after employee availability flow completes
     phase_before_employee_check: Optional[str] = None
 
+    # R&T step-by-step execution: remaining actions to process after user input
+    pending_rt_actions: list[dict] = field(default_factory=list)
+    # Accumulated R&T result messages across pauses for user input
+    rt_result_msgs: list[str] = field(default_factory=list)
+    # Original R&T phase message preserved across chained employee prompts
+    rt_phase_message: Optional[str] = None
+    # Stars deferred until all R&T actions finish
+    rt_pending_stars: list[str] = field(default_factory=list)
+    # Open slots count for the current R&T phase (for final message)
+    rt_open_slots: int = 0
+
     # Queued competition card actions needing user interaction (demand prompts, restaurant placement)
     pending_competition_actions: list[dict] = field(default_factory=list)
     # Phase to resume after all competition actions are processed

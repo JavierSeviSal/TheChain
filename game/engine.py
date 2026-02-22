@@ -304,7 +304,11 @@ class GameEngine:
         }
         self.state.phase = GamePhase.WAITING_FOR_INPUT
 
-        phase_message = result.get("message", "")
+        # Preserve the original R&T phase message across chained employee prompts.
+        # On first entry rt_phase_message is set by _finalize_rt_partial();
+        # on subsequent prompts (after user answered one) we keep using it
+        # instead of the short "Recruited: X" confirmation message.
+        phase_message = self.state.rt_phase_message or result.get("message", "")
         return {
             "status": "waiting",
             "message": f"Employee availability check: {name}",
@@ -820,6 +824,15 @@ class GameEngine:
             if self.state.phase_before_employee_check:
                 self.state.phase = GamePhase(self.state.phase_before_employee_check)
                 self.state.phase_before_employee_check = None
+
+            # If there are remaining R&T actions, resume step-by-step execution
+            if self.state.pending_rt_actions:
+                return self._resume_rt_actions()
+
+            # All R&T actions done — finalize if we were mid-R&T
+            if self.state.rt_result_msgs:
+                result = self._finalize_rt_complete()
+                return self._prompt_pending_milestones(result)
 
             # Check for pending milestones that may have queued during recruit_train
             return self._prompt_pending_milestones({"status": "ok", "message": msg})
@@ -1908,19 +1921,68 @@ class GameEngine:
         # Execute in descending order (highest slot number first)
         active_actions_reversed = list(reversed(active_actions))
 
-        result_msgs = []
-        for action_data in active_actions_reversed:
+        # Collect stars only from the active (open) slots
+        stars = [a["star"] for a in active_actions if a.get("star")]
+        self.state.rt_pending_stars = stars
+
+        # Store actions for step-by-step execution (pause when input needed)
+        self.state.pending_rt_actions = active_actions_reversed
+        self.state.rt_result_msgs = []
+        self.state.rt_open_slots = open_slots
+        self.state.rt_phase_message = None
+
+        return self._execute_rt_actions_stepwise()
+
+    def _execute_rt_actions_stepwise(self) -> dict:
+        """Execute pending R&T actions one at a time, pausing when user input is needed."""
+        while self.state.pending_rt_actions:
+            action_data = self.state.pending_rt_actions.pop(0)
             msg = self._execute_recruit_action(action_data)
-            result_msgs.append(msg)
+            self.state.rt_result_msgs.append(msg)
+
+            # If this action queued an employee availability check, pause now
+            # so the user can answer before remaining actions execute.
+            if self.state.pending_employee_checks:
+                return self._finalize_rt_partial()
+
+        # All actions done, no pending prompts
+        return self._finalize_rt_complete()
+
+    def _finalize_rt_partial(self) -> dict:
+        """Build an interim R&T result when pausing for employee input."""
+        open_slots = self.state.rt_open_slots
+        hint = self._worktime_turn_hint()
+        message = (
+            f"Recruit & Train ({open_slots} open slots). "
+            + " | ".join(self.state.rt_result_msgs)
+            + hint
+        )
+        # Store as the authoritative phase message so employee prompts don't overwrite it
+        self.state.rt_phase_message = message
+        return {
+            "status": "ok",
+            "message": message,
+            "actions_taken": list(self.state.rt_result_msgs),
+        }
+
+    def _finalize_rt_complete(self) -> dict:
+        """Finalize R&T when all actions (and employee checks) are resolved."""
+        open_slots = self.state.rt_open_slots
+        result_msgs = list(self.state.rt_result_msgs)
 
         self.state.log(
-            f"Open slots: {open_slots}. Executed {len(active_actions)} actions.",
+            f"Open slots: {open_slots}. Executed actions.",
             "recruit_train",
         )
 
-        # Collect stars only from the active (open) slots
-        stars = [a["star"] for a in active_actions if a.get("star")]
-        self.state.pending_stars = stars
+        self.state.pending_stars = list(self.state.rt_pending_stars)
+
+        # Clean up R&T step-by-step state
+        self.state.pending_rt_actions = []
+        self.state.rt_result_msgs = []
+        self.state.rt_pending_stars = []
+        self.state.rt_phase_message = None
+        self.state.rt_open_slots = 0
 
         self.state.phase = GamePhase.INITIATE_MARKETING
         hint = self._worktime_turn_hint()
@@ -1932,6 +1994,23 @@ class GameEngine:
             "actions_taken": result_msgs,
             "next_phase": "initiate_marketing",
         }
+
+    def _resume_rt_actions(self) -> dict:
+        """Resume R&T execution after an employee availability check is resolved.
+
+        Called from the employee_available_confirm input handler once all
+        pending employee checks are answered. Continues executing remaining
+        R&T actions (if any) or finalizes the phase.
+        """
+        if self.state.pending_rt_actions:
+            # More actions to execute — continue step-by-step
+            result = self._execute_rt_actions_stepwise()
+            # If stepwise returned because of another employee check, intercept
+            result = self._prompt_pending_employee_checks(result)
+            return self._prompt_pending_milestones(result)
+        else:
+            # No more actions — finalize R&T
+            return self._finalize_rt_complete()
 
     def _execute_recruit_action(self, action_data: dict) -> str:
         """Execute a single Recruit & Train action."""

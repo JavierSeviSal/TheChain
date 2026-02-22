@@ -1,14 +1,14 @@
 {
   "meta": {
     "slot_name": "autosave",
-    "timestamp": 1771785106.7070506,
-    "date": "2026-02-22T19:31:46.707050",
-    "turn": 34,
-    "phase": "initiate_marketing"
+    "timestamp": 1771787458.4722354,
+    "date": "2026-02-22T20:10:58.472235",
+    "turn": 6,
+    "phase": "waiting_for_input"
   },
   "state": {
-    "turn_number": 34,
-    "phase": "initiate_marketing",
+    "turn_number": 6,
+    "phase": "waiting_for_input",
     "mode": "full",
     "language": "en",
     "modules": {
@@ -17,8 +17,8 @@
       "noodle": false,
       "sushi": false,
       "gourmet": true,
-      "mass_marketeer": true,
-      "rural_marketeer": true,
+      "mass_marketeer": false,
+      "rural_marketeer": false,
       "night_shift": false,
       "ketchup": false,
       "fry_chefs": false,
@@ -37,9 +37,14 @@
     },
     "action_deck_cards": [
       {
-        "id": 10,
+        "id": 12,
         "card_type": "action",
-        "card_number": 10
+        "card_number": 12
+      },
+      {
+        "id": 204,
+        "card_type": "cool",
+        "card_number": 4
       },
       {
         "id": 8,
@@ -47,29 +52,19 @@
         "card_number": 8
       },
       {
+        "id": 15,
+        "card_type": "action",
+        "card_number": 15
+      },
+      {
         "id": 5,
         "card_type": "action",
         "card_number": 5
       },
       {
-        "id": 103,
+        "id": 111,
         "card_type": "warm",
-        "card_number": 3
-      },
-      {
-        "id": 19,
-        "card_type": "action",
-        "card_number": 19
-      },
-      {
-        "id": 104,
-        "card_type": "warm",
-        "card_number": 4
-      },
-      {
-        "id": 108,
-        "card_type": "warm",
-        "card_number": 8
+        "card_number": 11
       },
       {
         "id": 211,
@@ -77,29 +72,9 @@
         "card_number": 11
       },
       {
-        "id": 2,
+        "id": 17,
         "card_type": "action",
-        "card_number": 2
-      },
-      {
-        "id": 112,
-        "card_type": "warm",
-        "card_number": 12
-      },
-      {
-        "id": 13,
-        "card_type": "action",
-        "card_number": 13
-      },
-      {
-        "id": 110,
-        "card_type": "warm",
-        "card_number": 10
-      },
-      {
-        "id": 12,
-        "card_type": "action",
-        "card_number": 12
+        "card_number": 17
       },
       {
         "id": 18,
@@ -107,14 +82,34 @@
         "card_number": 18
       },
       {
-        "id": 17,
+        "id": 9,
         "card_type": "action",
-        "card_number": 17
+        "card_number": 9
       },
       {
-        "id": 102,
+        "id": 11,
+        "card_type": "action",
+        "card_number": 11
+      },
+      {
+        "id": 1,
+        "card_type": "action",
+        "card_number": 1
+      },
+      {
+        "id": 19,
+        "card_type": "action",
+        "card_number": 19
+      },
+      {
+        "id": 203,
+        "card_type": "cool",
+        "card_number": 3
+      },
+      {
+        "id": 110,
         "card_type": "warm",
-        "card_number": 2
+        "card_number": 10
       },
       {
         "id": 4,
@@ -127,24 +122,41 @@
         "card_number": 20
       },
       {
-        "id": 3,
-        "card_type": "action",
-        "card_number": 3
-      },
-      {
         "id": 6,
         "card_type": "action",
         "card_number": 6
       },
       {
-        "id": 9,
+        "id": 10,
         "card_type": "action",
-        "card_number": 9
+        "card_number": 10
       },
       {
-        "id": 105,
+        "id": 14,
+        "card_type": "action",
+        "card_number": 14
+      },
+      {
+        "id": 13,
+        "card_type": "action",
+        "card_number": 13
+      },
+      {
+        "id": 2,
+        "card_type": "action",
+        "card_number": 2
+      },
+      {
+        "id": 103,
         "card_type": "warm",
-        "card_number": 5
+        "card_number": 3
+      }
+    ],
+    "discard_pile_cards": [
+      {
+        "id": 16,
+        "card_type": "action",
+        "card_number": 16
       },
       {
         "id": 7,
@@ -152,14 +164,21 @@
         "card_number": 7
       },
       {
-        "id": 106,
+        "id": 3,
+        "card_type": "action",
+        "card_number": 3
+      }
+    ],
+    "warm_deck_cards": [
+      {
+        "id": 104,
         "card_type": "warm",
-        "card_number": 6
+        "card_number": 4
       },
       {
-        "id": 15,
-        "card_type": "action",
-        "card_number": 15
+        "id": 102,
+        "card_type": "warm",
+        "card_number": 2
       },
       {
         "id": 109,
@@ -167,64 +186,46 @@
         "card_number": 9
       },
       {
+        "id": 112,
+        "card_type": "warm",
+        "card_number": 12
+      },
+      {
+        "id": 106,
+        "card_type": "warm",
+        "card_number": 6
+      },
+      {
+        "id": 105,
+        "card_type": "warm",
+        "card_number": 5
+      },
+      {
         "id": 101,
         "card_type": "warm",
         "card_number": 1
       },
       {
-        "id": 207,
-        "card_type": "cool",
-        "card_number": 7
+        "id": 108,
+        "card_type": "warm",
+        "card_number": 8
       },
       {
         "id": 107,
         "card_type": "warm",
         "card_number": 7
-      },
-      {
-        "id": 203,
-        "card_type": "cool",
-        "card_number": 3
-      },
-      {
-        "id": 111,
-        "card_type": "warm",
-        "card_number": 11
       }
     ],
-    "discard_pile_cards": [
-      {
-        "id": 1,
-        "card_type": "action",
-        "card_number": 1
-      },
-      {
-        "id": 11,
-        "card_type": "action",
-        "card_number": 11
-      },
-      {
-        "id": 16,
-        "card_type": "action",
-        "card_number": 16
-      },
-      {
-        "id": 14,
-        "card_type": "action",
-        "card_number": 14
-      }
-    ],
-    "warm_deck_cards": [],
     "cool_deck_cards": [
+      {
+        "id": 202,
+        "card_type": "cool",
+        "card_number": 2
+      },
       {
         "id": 212,
         "card_type": "cool",
         "card_number": 12
-      },
-      {
-        "id": 201,
-        "card_type": "cool",
-        "card_number": 1
       },
       {
         "id": 208,
@@ -237,41 +238,41 @@
         "card_number": 5
       },
       {
-        "id": 206,
-        "card_type": "cool",
-        "card_number": 6
-      },
-      {
-        "id": 204,
-        "card_type": "cool",
-        "card_number": 4
-      },
-      {
-        "id": 202,
-        "card_type": "cool",
-        "card_number": 2
-      },
-      {
         "id": 210,
         "card_type": "cool",
         "card_number": 10
       },
       {
+        "id": 206,
+        "card_type": "cool",
+        "card_number": 6
+      },
+      {
+        "id": 207,
+        "card_type": "cool",
+        "card_number": 7
+      },
+      {
         "id": 209,
         "card_type": "cool",
         "card_number": 9
+      },
+      {
+        "id": 201,
+        "card_type": "cool",
+        "card_number": 1
       }
     ],
     "tracks": {
-      "recruit_train": 4,
-      "price_distance": 6,
-      "waitresses": 4,
-      "competition": 3
+      "recruit_train": 3,
+      "price_distance": 10,
+      "waitresses": 2,
+      "competition": 2
     },
     "inventory": {
       "burger": 5,
-      "pizza": 5,
-      "beer": 5,
+      "pizza": 10,
+      "beer": 4,
       "lemonade": 5,
       "softdrink": 5,
       "sushi": 0,
@@ -282,74 +283,62 @@
     "marketeer_slots": [
       {
         "slot": 1,
-        "marketeer": "Rural Marketeer",
+        "marketeer": "Campaign Manager",
         "is_busy": true,
-        "market_item": "burger",
-        "campaign_number": null,
-        "campaigns_left": -1,
-        "placed_turn": 9
+        "market_item": "lemonade",
+        "campaign_number": 7,
+        "campaigns_left": 1,
+        "placed_turn": 4
       },
       {
         "slot": 2,
-        "marketeer": "Rural Marketeer",
+        "marketeer": "Brand Manager",
         "is_busy": true,
         "market_item": "softdrink",
-        "campaign_number": null,
-        "campaigns_left": -1,
-        "placed_turn": 24
+        "campaign_number": 10,
+        "campaigns_left": 3,
+        "placed_turn": 5
       },
       {
         "slot": 3,
         "marketeer": "Brand Manager",
         "is_busy": true,
-        "market_item": "beer",
-        "campaign_number": 4,
-        "campaigns_left": 1,
-        "placed_turn": 31
+        "market_item": "softdrink",
+        "campaign_number": 5,
+        "campaigns_left": 3,
+        "placed_turn": 5
       }
     ],
     "mass_marketeer": false,
     "employee_pile": [
-      "Pizza Chef",
-      "Brand Director",
-      "CFO",
-      "Burger Chef",
-      "Luxuries Manager",
       "Executive VP",
-      "Guru",
       "Zeppelin Pilot",
-      "Regional Manager"
+      "Pizza Chef"
     ],
     "milestones_claimed": [
+      "first_pizza_produced",
+      "first_waitress_played",
       "first_burger_produced",
       "first_to_train",
-      "first_to_hire_3",
-      "first_waitress_played",
-      "first_errand_boy",
-      "first_pizza_produced",
       "first_to_lower_prices",
-      "first_radio_campaign",
-      "first_pizza_marketed",
-      "first_to_throw_away",
+      "first_to_hire_3",
       "first_drink_marketed",
-      "first_billboard_placed",
-      "first_burger_marketed",
-      "first_rural_marketeer_used"
-    ],
-    "milestones_claimed_this_round": [],
-    "milestones_unavailable": [
-      "first_to_have_20",
-      "first_to_have_100",
-      "first_to_pay_20_salary",
       "first_cart_operator",
       "first_airplane_campaign"
     ],
+    "milestones_claimed_this_round": [],
+    "milestones_unavailable": [],
     "pending_milestone_checks": [],
     "milestones_expired": [],
     "milestones_turn2_tokens": [],
     "phase_before_milestone": null,
     "pending_employee_checks": [],
     "phase_before_employee_check": null,
+    "pending_rt_actions": [],
+    "rt_result_msgs": [],
+    "rt_phase_message": null,
+    "rt_pending_stars": [],
+    "rt_open_slots": 0,
     "pending_competition_actions": [],
     "phase_after_competition": null,
     "restaurants": [
@@ -358,113 +347,26 @@
         "position": ""
       },
       {
-        "tile": 7,
+        "tile": 8,
         "position": ""
       },
       {
-        "tile": 4,
+        "tile": 1,
         "position": ""
       }
     ],
     "max_restaurants": 3,
     "current_front_card": {
-      "id": 10,
+      "id": 12,
       "card_type": "action",
-      "card_number": 10,
-      "image_front": "/static/cards/action_10_front.png",
-      "image_back": "/static/cards/action_10_back.png",
-      "map_tiles": {
-        "expand_chain": 5,
-        "market": 1,
-        "coffee_shop": 3,
-        "develop_lobby": 8
-      },
-      "front": {
-        "actions": [
-          {
-            "slot": 1,
-            "type": "move_distance",
-            "target": "-1",
-            "fallback_food": null,
-            "requires_module": null,
-            "star": null
-          },
-          {
-            "slot": 2,
-            "type": "recruit_marketeer",
-            "target": "Rural Marketeer",
-            "fallback_food": "softdrink",
-            "requires_module": "rural_marketeer",
-            "star": "lobby"
-          },
-          {
-            "slot": 3,
-            "type": "recruit_employee",
-            "target": "Burger Chef",
-            "fallback_food": null,
-            "requires_module": null,
-            "star": "develop"
-          },
-          {
-            "slot": 4,
-            "type": "recruit_employee",
-            "target": "CFO",
-            "fallback_food": null,
-            "requires_module": null,
-            "star": null
-          }
-        ],
-        "market_item": "burger"
-      },
-      "back": {
-        "demand_type": "specific",
-        "food_items": [
-          "lemonade"
-        ],
-        "multiplier": 1,
-        "cleanup_actions": [
-          {
-            "type": "get_kimchi",
-            "value": 1
-          },
-          {
-            "type": "move_distance",
-            "value": 0
-          },
-          {
-            "type": "move_waitress",
-            "value": -2
-          },
-          {
-            "type": "inventory_drop",
-            "value": 0
-          },
-          {
-            "type": "move_recruit_train",
-            "value": 3
-          }
-        ],
-        "develop_type": "house",
-        "develop_house": "19",
-        "lobby_type": "park",
-        "lobby_house": "10",
-        "food_item": "sushi",
-        "food_item_module": "sushi",
-        "food_item_fallback": "pizza",
-        "food_item_multiply": 1
-      }
-    },
-    "current_back_card": {
-      "id": 14,
-      "card_type": "action",
-      "card_number": 14,
-      "image_front": "/static/cards/action_14_front.png",
-      "image_back": "/static/cards/action_14_back.png",
+      "card_number": 12,
+      "image_front": "/static/cards/action_12_front.png",
+      "image_back": "/static/cards/action_12_back.png",
       "map_tiles": {
         "expand_chain": 6,
-        "market": 5,
-        "coffee_shop": 8,
-        "develop_lobby": 4
+        "market": 3,
+        "coffee_shop": 9,
+        "develop_lobby": 2
       },
       "front": {
         "actions": [
@@ -474,7 +376,7 @@
             "target": "+1",
             "fallback_food": null,
             "requires_module": null,
-            "star": null
+            "star": "coffee_shop"
           },
           {
             "slot": 2,
@@ -482,26 +384,26 @@
             "target": "Campaign Manager",
             "fallback_food": null,
             "requires_module": null,
-            "star": "develop"
+            "star": null
           },
           {
             "slot": 3,
-            "type": "move_distance",
-            "target": "-3",
+            "type": "recruit_employee",
+            "target": "Pizza Chef",
             "fallback_food": null,
             "requires_module": null,
-            "star": "coffee_shop"
+            "star": null
           },
           {
             "slot": 4,
             "type": "recruit_employee",
-            "target": "Regional Manager",
+            "target": "HR Director",
             "fallback_food": null,
             "requires_module": null,
-            "star": null
+            "star": "expand_chain"
           }
         ],
-        "market_item": "pizza"
+        "market_item": "lemonade"
       },
       "back": {
         "demand_type": "most_demand",
@@ -514,11 +416,11 @@
           },
           {
             "type": "move_distance",
-            "value": 0
+            "value": 2
           },
           {
             "type": "move_waitress",
-            "value": -1
+            "value": 0
           },
           {
             "type": "inventory_drop",
@@ -526,16 +428,101 @@
           },
           {
             "type": "move_recruit_train",
-            "value": -2
+            "value": 2
           }
         ],
         "develop_type": "garden",
-        "develop_house": "10",
+        "develop_house": "5",
         "lobby_type": "road",
         "lobby_house": null,
+        "food_item": "noodle",
+        "food_item_module": "noodle",
+        "food_item_fallback": "burger",
+        "food_item_multiply": 1
+      }
+    },
+    "current_back_card": {
+      "id": 3,
+      "card_type": "action",
+      "card_number": 3,
+      "image_front": "/static/cards/action_03_front.png",
+      "image_back": "/static/cards/action_03_back.png",
+      "map_tiles": {
+        "expand_chain": 1,
+        "market": 3,
+        "coffee_shop": 2,
+        "develop_lobby": 9
+      },
+      "front": {
+        "actions": [
+          {
+            "slot": 1,
+            "type": "recruit_employee",
+            "target": "Night Shift Manager",
+            "fallback_food": "pizza",
+            "requires_module": "night_shift",
+            "star": null
+          },
+          {
+            "slot": 2,
+            "type": "claim_milestone",
+            "target": "first_cart_operator",
+            "fallback_food": null,
+            "requires_module": null,
+            "star": "expand_chain"
+          },
+          {
+            "slot": 3,
+            "type": "recruit_marketeer",
+            "target": "Brand Manager",
+            "fallback_food": null,
+            "requires_module": null,
+            "star": "lobby"
+          },
+          {
+            "slot": 4,
+            "type": "recruit_employee",
+            "target": "Zeppelin Pilot",
+            "fallback_food": null,
+            "requires_module": null,
+            "star": null
+          }
+        ],
+        "market_item": "softdrink"
+      },
+      "back": {
+        "demand_type": "most_demand",
+        "food_items": [],
+        "multiplier": 2,
+        "cleanup_actions": [
+          {
+            "type": "get_kimchi",
+            "value": 1
+          },
+          {
+            "type": "move_distance",
+            "value": 0
+          },
+          {
+            "type": "move_waitress",
+            "value": -3
+          },
+          {
+            "type": "inventory_drop",
+            "value": 0
+          },
+          {
+            "type": "move_recruit_train",
+            "value": 2
+          }
+        ],
+        "develop_type": "house",
+        "develop_house": "6",
+        "lobby_type": "park",
+        "lobby_house": "22",
         "food_item": "coffee",
         "food_item_module": "coffee",
-        "food_item_fallback": "lemonade",
+        "food_item_fallback": "softdrink",
         "food_item_multiply": 1
       }
     },
@@ -544,610 +531,609 @@
     "bank_reserve_card": "200",
     "action_log": [
       {
-        "turn": 31,
-        "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 1): permanent campaign (burger, Giant Billboard).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 31,
-        "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 2): permanent campaign (softdrink, Giant Billboard).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 31,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): campaign fires (beer, #4), 4 duration marker(s) before decrement.",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 31,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): 3 campaign(s) remaining (beer, #4).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 31,
+        "turn": 3,
         "phase": "cleanup",
-        "message": "=== CLEANUP ===",
-        "category": "phase"
-      },
-      {
-        "turn": 31,
-        "phase": "cleanup",
-        "message": "Cleanup: Inventory capped \u2014 burger: 15\u219210, softdrink: 15\u219210",
+        "message": "SHUFFLE triggered! Action Deck reshuffled with discard pile.",
         "category": "cleanup"
       },
       {
-        "turn": 31,
+        "turn": 4,
         "phase": "cleanup",
-        "message": "Cleanup: Price+Distance 7 \u2192 8",
-        "category": "cleanup"
-      },
-      {
-        "turn": 31,
-        "phase": "cleanup",
-        "message": "Cleanup: Recruit & Train 4 \u2192 3",
-        "category": "cleanup"
-      },
-      {
-        "turn": 32,
-        "phase": "cleanup",
-        "message": "Turn 31 complete. Starting Turn 32.",
+        "message": "Turn 3 complete. Starting Turn 4.",
         "category": "phase"
       },
       {
-        "turn": 32,
+        "turn": 4,
         "phase": "restructuring",
-        "message": "=== TURN 32 \u2014 RESTRUCTURING ===",
+        "message": "=== TURN 4 \u2014 RESTRUCTURING ===",
         "category": "phase"
       },
       {
-        "turn": 32,
-        "phase": "restructuring",
-        "message": "Flipped card #11 (back side: GET FOOD & DRINKS / CLEANUP).",
-        "category": "restructuring"
-      },
-      {
-        "turn": 32,
-        "phase": "restructuring",
-        "message": "Next card revealed: #3 (front side: RECRUIT & TRAIN).",
-        "category": "restructuring"
-      },
-      {
-        "turn": 32,
-        "phase": "restructuring",
-        "message": "Warm deck exhausted \u2014 no card to place.",
-        "category": "warning"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "Competition card (#3 cool) on top does not match track (Warm). Placed under action deck.",
-        "category": "restructuring"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "Resolved competition card: COOL Competition Card #3 does not match track (Warm). Placed face down under the Action Deck.",
-        "category": "competition"
-      },
-      {
-        "turn": 32,
-        "phase": "order_of_business",
-        "message": "=== ORDER OF BUSINESS ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "Turn order: The Chain goes FIRST. (The Chain has more open slots (3 vs 0))",
-        "category": "order_of_business"
-      },
-      {
-        "turn": 32,
-        "phase": "recruit_train",
-        "message": "=== RECRUIT & TRAIN ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "recruit_train",
-        "message": "All marketeer slots full. Cannot recruit Brand Manager.",
-        "category": "recruit_train"
-      },
-      {
-        "turn": 32,
-        "phase": "recruit_train",
-        "message": "Price+Distance: 8 \u2192 7",
-        "category": "recruit_train"
-      },
-      {
-        "turn": 32,
-        "phase": "recruit_train",
-        "message": "Open slots: 3. Executed 3 actions.",
-        "category": "recruit_train"
-      },
-      {
-        "turn": 32,
-        "phase": "initiate_marketing",
-        "message": "=== INITIATE MARKETING ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "get_food",
-        "message": "=== GET FOOD & DRINKS ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "No most demand item selected.",
-        "category": "get_food"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "+4 pizza (fallback, sushi not in play)",
-        "category": "get_food"
-      },
-      {
-        "turn": 32,
-        "phase": "develop",
-        "message": "=== DEVELOP ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "develop",
-        "message": "DEVELOP \u2605: Place garden next to house #2. Target tile: 8",
-        "category": "develop"
-      },
-      {
-        "turn": 32,
-        "phase": "lobby",
-        "message": "=== LOBBY ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "expand_chain",
-        "message": "=== EXPAND CHAIN ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "expand_chain",
-        "message": "No EXPAND CHAIN star.",
-        "category": "expand"
-      },
-      {
-        "turn": 32,
-        "phase": "dinnertime",
-        "message": "=== DINNERTIME ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "dinnertime",
-        "message": "Price+Distance: $7 | Waitresses: 4 | Drive-ins: YES | Cash multiplier: 1.0x",
-        "category": "dinnertime"
-      },
-      {
-        "turn": 32,
-        "phase": "waiting_for_input",
-        "message": "Chain and Player earned equal ($0). Competition unchanged.",
-        "category": "dinnertime"
-      },
-      {
-        "turn": 32,
-        "phase": "payday",
-        "message": "=== PAYDAY ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "payday",
-        "message": "Pay your employees their salaries. The Chain does not pay salaries.",
-        "category": "payday"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "=== MARKETING CAMPAIGNS ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "--- Campaign Round 1 ---",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 1): permanent campaign (burger, Giant Billboard).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 2): permanent campaign (softdrink, Giant Billboard).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): campaign fires (beer, #4), 3 duration marker(s) before decrement.",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 32,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): 2 campaign(s) remaining (beer, #4).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 32,
-        "phase": "cleanup",
-        "message": "=== CLEANUP ===",
-        "category": "phase"
-      },
-      {
-        "turn": 32,
-        "phase": "cleanup",
-        "message": "Cleanup: Price+Distance 7 \u2192 10",
-        "category": "cleanup"
-      },
-      {
-        "turn": 32,
-        "phase": "cleanup",
-        "message": "Cleanup: Recruit & Train 3 \u2192 4",
-        "category": "cleanup"
-      },
-      {
-        "turn": 33,
-        "phase": "cleanup",
-        "message": "Turn 32 complete. Starting Turn 33.",
-        "category": "phase"
-      },
-      {
-        "turn": 33,
-        "phase": "restructuring",
-        "message": "=== TURN 33 \u2014 RESTRUCTURING ===",
-        "category": "phase"
-      },
-      {
-        "turn": 33,
+        "turn": 4,
         "phase": "restructuring",
         "message": "Flipped card #16 (back side: GET FOOD & DRINKS / CLEANUP).",
         "category": "restructuring"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "restructuring",
-        "message": "Next card revealed: #11 (front side: RECRUIT & TRAIN).",
+        "message": "Next card revealed: #7 (front side: RECRUIT & TRAIN).",
         "category": "restructuring"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "restructuring",
-        "message": "Warm deck exhausted \u2014 no card to place.",
-        "category": "warning"
+        "message": "Competition NEUTRAL \u2192 no adjustment.",
+        "category": "restructuring"
       },
       {
-        "turn": 33,
-        "phase": "waiting_for_input",
-        "message": "Competition card: Price+Distance 10 \u2192 8",
-        "category": "competition"
-      },
-      {
-        "turn": 33,
-        "phase": "waiting_for_input",
-        "message": "Competition card: Waitresses 4 \u2192 4",
-        "category": "competition"
-      },
-      {
-        "turn": 33,
-        "phase": "waiting_for_input",
-        "message": "Resolved warm card #11: +50% CASH earned this turn! | +5 burger | +5 pizza (fallback, noodle not in play) | Distance: 10\u21928 | Waitress: 4\u21924",
-        "category": "competition"
-      },
-      {
-        "turn": 33,
-        "phase": "waiting_for_input",
-        "message": "Resolved competition card: +50% CASH earned this turn! | +5 burger | +5 pizza (fallback, noodle not in play) | Distance: 10\u21928 | Waitress: 4\u21924",
-        "category": "competition"
-      },
-      {
-        "turn": 33,
+        "turn": 4,
         "phase": "order_of_business",
         "message": "=== ORDER OF BUSINESS ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "waiting_for_input",
         "message": "Turn order: The Chain goes FIRST. (The Chain has more open slots (4 vs 0))",
         "category": "order_of_business"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
         "message": "=== RECRUIT & TRAIN ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
-        "message": "Regional Manager recruitment pending availability check.",
+        "message": "Executive VP recruitment pending availability check.",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
-        "message": "Price+Distance: 8 \u2192 6",
+        "message": "Module 'coffee' not in play. Getting +5 lemonade, beer, softdrink instead.",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
-        "message": "All marketeer slots full. Cannot recruit Campaign Manager.",
+        "message": "Recruited Campaign Manager to Marketeer slot 1.",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
-        "message": "Waitresses: 4 \u2192 4",
+        "message": "Waitresses: 1 \u2192 2",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
-        "phase": "recruit_train",
-        "message": "Waitresses reached 4! Recruit highest-ranking movie star.",
-        "category": "recruit_train"
-      },
-      {
-        "turn": 33,
+        "turn": 4,
         "phase": "recruit_train",
         "message": "Open slots: 4. Executed 4 actions.",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "waiting_for_input",
-        "message": "Recruited Regional Manager to Employee Pile.",
+        "message": "Recruited Executive VP to Employee Pile.",
         "category": "recruit_train"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "initiate_marketing",
         "message": "=== INITIATE MARKETING ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
+        "phase": "waiting_for_input",
+        "message": "Campaign Manager markets lemonade. Campaign #7. Target tile: 7. Duration: 3 campaigns.",
+        "category": "marketing"
+      },
+      {
+        "turn": 4,
+        "phase": "waiting_for_input",
+        "message": "Milestone auto-claimed: First Drink Marketed (will be announced at cleanup).",
+        "category": "milestone"
+      },
+      {
+        "turn": 4,
         "phase": "get_food",
         "message": "=== GET FOOD & DRINKS ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "get_food",
         "message": "+5 burger",
         "category": "get_food"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "get_food",
         "message": "+5 softdrink (fallback, coffee not in play)",
         "category": "get_food"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "develop",
         "message": "=== DEVELOP ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "develop",
-        "message": "DEVELOP \u2605: Place garden next to house #13. Target tile: 4",
+        "message": "DEVELOP \u2605: Place garden next to house #13. Target tile: 6",
         "category": "develop"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "lobby",
         "message": "=== LOBBY ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "expand_chain",
         "message": "=== EXPAND CHAIN ===",
         "category": "phase"
       },
       {
-        "turn": 33,
-        "phase": "expand_chain",
-        "message": "No EXPAND CHAIN star.",
+        "turn": 4,
+        "phase": "waiting_for_input",
+        "message": "New restaurant placed on tile 8.",
         "category": "expand"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "dinnertime",
         "message": "=== DINNERTIME ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "dinnertime",
-        "message": "Price+Distance: $6 | Waitresses: 4 | Drive-ins: YES | Cash multiplier: 1.5x",
+        "message": "Price+Distance: $10 | Waitresses: 2 | Drive-ins: YES | Cash multiplier: 1.0x",
         "category": "dinnertime"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "waiting_for_input",
         "message": "Chain and Player earned equal ($0). Competition unchanged.",
         "category": "dinnertime"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "payday",
         "message": "=== PAYDAY ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "payday",
         "message": "Pay your employees their salaries. The Chain does not pay salaries.",
         "category": "payday"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "marketing_campaigns",
         "message": "=== MARKETING CAMPAIGNS ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "marketing_campaigns",
         "message": "--- Campaign Round 1 ---",
         "category": "marketing_campaigns"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 1): permanent campaign (burger, Giant Billboard).",
+        "message": "Campaign Manager (slot 1): campaign fires (lemonade, #7), 3 duration marker(s) before decrement.",
         "category": "marketing_campaigns"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "marketing_campaigns",
-        "message": "Rural Marketeer (slot 2): permanent campaign (softdrink, Giant Billboard).",
+        "message": "Campaign Manager (slot 1): 2 campaign(s) remaining (lemonade, #7).",
         "category": "marketing_campaigns"
       },
       {
-        "turn": 33,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): campaign fires (beer, #4), 2 duration marker(s) before decrement.",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 33,
-        "phase": "marketing_campaigns",
-        "message": "Brand Manager (slot 3): 1 campaign(s) remaining (beer, #4).",
-        "category": "marketing_campaigns"
-      },
-      {
-        "turn": 33,
+        "turn": 4,
         "phase": "cleanup",
         "message": "=== CLEANUP ===",
         "category": "phase"
       },
       {
-        "turn": 33,
+        "turn": 4,
         "phase": "cleanup",
-        "message": "Cleanup: Inventory capped \u2014 burger: 20\u219210, pizza: 14\u219210, softdrink: 15\u219210",
+        "message": "Cleanup: Inventory drop \u2014 burger: 10\u21925, beer: 9\u21924, softdrink: 10\u21925",
         "category": "cleanup"
       },
       {
-        "turn": 33,
-        "phase": "cleanup",
-        "message": "Cleanup: Inventory drop \u2014 burger: 10\u21925, pizza: 10\u21925, softdrink: 10\u21925",
-        "category": "cleanup"
-      },
-      {
-        "turn": 33,
+        "turn": 4,
         "phase": "cleanup",
         "message": "Cleanup: Recruit & Train 4 \u2192 4",
         "category": "cleanup"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "cleanup",
-        "message": "Turn 33 complete. Starting Turn 34.",
+        "message": "Turn 4 complete. Starting Turn 5.",
         "category": "phase"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "restructuring",
-        "message": "=== TURN 34 \u2014 RESTRUCTURING ===",
+        "message": "=== TURN 5 \u2014 RESTRUCTURING ===",
         "category": "phase"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "restructuring",
-        "message": "Flipped card #14 (back side: GET FOOD & DRINKS / CLEANUP).",
+        "message": "Flipped card #7 (back side: GET FOOD & DRINKS / CLEANUP).",
         "category": "restructuring"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "restructuring",
-        "message": "Next card revealed: #10 (front side: RECRUIT & TRAIN).",
+        "message": "Next card revealed: #3 (front side: RECRUIT & TRAIN).",
         "category": "restructuring"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "restructuring",
-        "message": "Competition WARM \u2192 placed Warm card under deck.",
+        "message": "Competition NEUTRAL \u2192 no adjustment.",
         "category": "restructuring"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "order_of_business",
         "message": "=== ORDER OF BUSINESS ===",
         "category": "phase"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "waiting_for_input",
         "message": "Turn order: The Chain goes FIRST. (The Chain has more open slots (4 vs 0))",
         "category": "order_of_business"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "recruit_train",
         "message": "=== RECRUIT & TRAIN ===",
         "category": "phase"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "recruit_train",
-        "message": "CFO already recruited. Skipping.",
+        "message": "Zeppelin Pilot recruitment pending availability check.",
         "category": "recruit_train"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "recruit_train",
-        "message": "Burger Chef already recruited. Skipping.",
+        "message": "Recruited Brand Manager to Marketeer slot 2.",
         "category": "recruit_train"
       },
       {
-        "turn": 34,
+        "turn": 5,
         "phase": "recruit_train",
-        "message": "All marketeer slots full. Cannot recruit Rural Marketeer.",
+        "message": "Milestone auto-claimed: First Cart Operator Played (will be announced at cleanup).",
+        "category": "milestone"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Module 'night_shift' not in play. Getting +5 pizza instead.",
         "category": "recruit_train"
       },
       {
-        "turn": 34,
-        "phase": "recruit_train",
-        "message": "Price+Distance: 6 \u2192 6",
-        "category": "recruit_train"
-      },
-      {
-        "turn": 34,
+        "turn": 5,
         "phase": "recruit_train",
         "message": "Open slots: 4. Executed 4 actions.",
         "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Undo performed.",
+        "category": "system"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "=== RECRUIT & TRAIN ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Zeppelin Pilot recruitment pending availability check.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Recruited Brand Manager to Marketeer slot 3.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Module 'night_shift' not in play. Getting +5 pizza instead.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "recruit_train",
+        "message": "Open slots: 4. Executed 4 actions.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Recruited Zeppelin Pilot to Employee Pile.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 5,
+        "phase": "initiate_marketing",
+        "message": "=== INITIATE MARKETING ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Brand Manager markets softdrink. Campaign #10. Target tile: 3. Duration: 4 campaigns.",
+        "category": "marketing"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Brand Manager markets softdrink. Campaign #5. Target tile: 3. Duration: 4 campaigns.",
+        "category": "marketing"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Milestone auto-claimed: First Airplane Campaign (will be announced at cleanup).",
+        "category": "milestone"
+      },
+      {
+        "turn": 5,
+        "phase": "get_food",
+        "message": "=== GET FOOD & DRINKS ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Skipped noodle (noodle not in play, no fallback)",
+        "category": "get_food"
+      },
+      {
+        "turn": 5,
+        "phase": "develop",
+        "message": "=== DEVELOP ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "lobby",
+        "message": "=== LOBBY ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "expand_chain",
+        "message": "=== EXPAND CHAIN ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "New restaurant placed on tile 1.",
+        "category": "expand"
+      },
+      {
+        "turn": 5,
+        "phase": "dinnertime",
+        "message": "=== DINNERTIME ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "dinnertime",
+        "message": "Price+Distance: $10 | Waitresses: 2 | Drive-ins: YES | Cash multiplier: 1.0x",
+        "category": "dinnertime"
+      },
+      {
+        "turn": 5,
+        "phase": "waiting_for_input",
+        "message": "Chain and Player earned equal ($0). Competition unchanged.",
+        "category": "dinnertime"
+      },
+      {
+        "turn": 5,
+        "phase": "payday",
+        "message": "=== PAYDAY ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "payday",
+        "message": "Pay your employees their salaries. The Chain does not pay salaries.",
+        "category": "payday"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "=== MARKETING CAMPAIGNS ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "--- Campaign Round 1 ---",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Campaign Manager (slot 1): campaign fires (lemonade, #7), 2 duration marker(s) before decrement.",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Brand Manager (slot 2): campaign fires (softdrink, #10), 4 duration marker(s) before decrement.",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Brand Manager (slot 3): campaign fires (softdrink, #5), 4 duration marker(s) before decrement.",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Campaign Manager (slot 1): 1 campaign(s) remaining (lemonade, #7).",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Brand Manager (slot 2): 3 campaign(s) remaining (softdrink, #10).",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "marketing_campaigns",
+        "message": "Brand Manager (slot 3): 3 campaign(s) remaining (softdrink, #5).",
+        "category": "marketing_campaigns"
+      },
+      {
+        "turn": 5,
+        "phase": "cleanup",
+        "message": "=== CLEANUP ===",
+        "category": "phase"
+      },
+      {
+        "turn": 5,
+        "phase": "cleanup",
+        "message": "Cleanup: Inventory capped \u2014 pizza: 15\u219210",
+        "category": "cleanup"
+      },
+      {
+        "turn": 5,
+        "phase": "cleanup",
+        "message": "Cleanup: Waitresses 2 \u2192 1",
+        "category": "cleanup"
+      },
+      {
+        "turn": 5,
+        "phase": "cleanup",
+        "message": "Cleanup: Recruit & Train 4 \u2192 3",
+        "category": "cleanup"
+      },
+      {
+        "turn": 6,
+        "phase": "cleanup",
+        "message": "Turn 5 complete. Starting Turn 6.",
+        "category": "phase"
+      },
+      {
+        "turn": 6,
+        "phase": "restructuring",
+        "message": "=== TURN 6 \u2014 RESTRUCTURING ===",
+        "category": "phase"
+      },
+      {
+        "turn": 6,
+        "phase": "restructuring",
+        "message": "Flipped card #3 (back side: GET FOOD & DRINKS / CLEANUP).",
+        "category": "restructuring"
+      },
+      {
+        "turn": 6,
+        "phase": "restructuring",
+        "message": "Next card revealed: #12 (front side: RECRUIT & TRAIN).",
+        "category": "restructuring"
+      },
+      {
+        "turn": 6,
+        "phase": "restructuring",
+        "message": "Competition NEUTRAL \u2192 no adjustment.",
+        "category": "restructuring"
+      },
+      {
+        "turn": 6,
+        "phase": "order_of_business",
+        "message": "=== ORDER OF BUSINESS ===",
+        "category": "phase"
+      },
+      {
+        "turn": 6,
+        "phase": "waiting_for_input",
+        "message": "Turn order: The Chain goes FIRST. (The Chain has more open slots (3 vs 0))",
+        "category": "order_of_business"
+      },
+      {
+        "turn": 6,
+        "phase": "recruit_train",
+        "message": "=== RECRUIT & TRAIN ===",
+        "category": "phase"
+      },
+      {
+        "turn": 6,
+        "phase": "recruit_train",
+        "message": "Pizza Chef recruitment pending availability check.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 6,
+        "phase": "waiting_for_input",
+        "message": "Recruited Pizza Chef to Employee Pile.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 6,
+        "phase": "recruit_train",
+        "message": "All marketeer slots full. Cannot recruit Campaign Manager.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 6,
+        "phase": "recruit_train",
+        "message": "Waitresses: 1 \u2192 2",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 6,
+        "phase": "recruit_train",
+        "message": "Open slots: 3. Executed actions.",
+        "category": "recruit_train"
+      },
+      {
+        "turn": 6,
+        "phase": "initiate_marketing",
+        "message": "=== INITIATE MARKETING ===",
+        "category": "phase"
+      },
+      {
+        "turn": 6,
+        "phase": "get_food",
+        "message": "=== GET FOOD & DRINKS ===",
+        "category": "phase"
       }
     ],
     "is_first_turn": false,
     "pending_stars": [
-      "lobby",
-      "develop"
+      "coffee_shop"
     ],
     "chain_cash_this_turn": 0,
     "chain_total_cash": 0,
@@ -1155,11 +1141,33 @@
     "no_driveins_this_turn": false,
     "chain_movie_star": null,
     "turn_order": "chain_first",
-    "display_phase": "recruit_train",
-    "pending_input": null,
+    "display_phase": "get_food",
+    "pending_input": {
+      "type": "demand_info",
+      "prompt": "Which item(s) have the MOST demand tokens on the map?",
+      "prompt_es": "\u00bfQu\u00e9 item(s) tienen M\u00c1S fichas de demanda en el mapa?",
+      "demand_type": "most_demand",
+      "multiplier": 2,
+      "food_amount": 4,
+      "fields": [
+        {
+          "name": "most_demand_items",
+          "label": "Item(s) with MOST demand (select all tied)",
+          "label_es": "Item(s) con M\u00c1S demanda (selecciona todos los empatados)",
+          "type": "multiselect",
+          "options": [
+            "burger",
+            "pizza",
+            "beer",
+            "lemonade",
+            "softdrink"
+          ]
+        }
+      ]
+    },
     "next_phase_after_input": null,
-    "cards_drawn_this_cycle": 4,
-    "deck_cycles": 23,
-    "total_cards_drawn": 34
+    "cards_drawn_this_cycle": 3,
+    "deck_cycles": 1,
+    "total_cards_drawn": 6
   }
 }
