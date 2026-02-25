@@ -248,9 +248,18 @@ def download_save():
     buf.write(json.dumps(save_data, indent=2).encode("utf-8"))
     buf.seek(0)
     filename = f"thechain_turn{engine.state.turn_number}.json"
-    return send_file(
-        buf, mimetype="application/json", as_attachment=True, download_name=filename
-    )
+    try:
+        return send_file(
+            buf, mimetype="application/json", as_attachment=True, download_name=filename
+        )
+    except TypeError:
+        # Flask < 2.0 uses attachment_filename instead of download_name
+        return send_file(
+            buf,
+            mimetype="application/json",
+            as_attachment=True,
+            attachment_filename=filename,
+        )
 
 
 @app.route("/api/game/upload", methods=["POST"])

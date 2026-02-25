@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>The Chain — FCM Solo Automa</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=28">
+    <link rel="stylesheet" href="/static/css/style.css?v=31">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 </head>
 <body>
@@ -29,8 +29,7 @@
         <div class="overlay-content menu-panel">
             <h2 data-i18n="menu">Menu</h2>
             <button id="btn-new-game" class="menu-btn" data-i18n="new_game">New Game</button>
-            <button id="btn-save-game" class="menu-btn" data-i18n="save_game">Save Game</button>
-            <button id="btn-load-game" class="menu-btn" data-i18n="load_game">Load Game</button>
+            <button id="btn-save-load" class="menu-btn" data-i18n="save_load">Save & Load</button>
             <button id="btn-bank-break" class="menu-btn warn" data-i18n="bank_break">Bank Break!</button>
             <button id="btn-close-menu" class="menu-btn muted" data-i18n="close">Close</button>
         </div>
@@ -101,17 +100,24 @@
         </div>
     </div>
 
-    <!-- ─── Load Game Overlay ────────────────────────────────── -->
+    <!-- ─── Save & Load Overlay ──────────────────────────────── -->
     <div id="load-overlay" class="overlay hidden">
         <div class="overlay-content">
-            <h2 data-i18n="load_game">Load Game</h2>
-            <div id="saves-list" class="saves-list"></div>
+            <h2 data-i18n="save_load">Save & Load</h2>
+
             <div class="save-file-actions">
-                <button id="btn-download-save" class="menu-btn" data-i18n="download_save">⬇ Download Save</button>
-                <label class="upload-label menu-btn"><span data-i18n="upload_save">⬆ Upload Save</span>
+                <button id="btn-download-save" class="menu-btn save-action-btn" data-i18n="download_save">⬇ Download Session</button>
+                <label class="upload-label menu-btn save-action-btn"><span data-i18n="upload_save">⬆ Upload Session</span>
                     <input type="file" id="file-upload-save" accept=".json" hidden>
                 </label>
             </div>
+            <p class="save-file-hint" data-i18n="save_hint">Download to keep your game across sessions. Upload to restore a previous save.</p>
+
+            <details class="session-saves-details">
+                <summary data-i18n="session_saves">Session Saves</summary>
+                <div id="saves-list" class="saves-list"></div>
+            </details>
+
             <button id="btn-close-load" class="muted-btn" data-i18n="close">Close</button>
         </div>
     </div>
@@ -149,7 +155,10 @@
                 <h2>🔗 The Chain</h2>
                 <p data-i18n="welcome_desc">Solo Automa Companion for Food Chain Magnate</p>
                 <button id="btn-welcome-new" class="primary-btn large" data-i18n="new_game">New Game</button>
-                <button id="btn-welcome-load" class="muted-btn" data-i18n="load_game">Load Game</button>
+                <!-- <button id="btn-welcome-load" class="muted-btn" data-i18n="load_game">Load Game</button> -->
+                <label class="upload-label menu-btn save-action-btn"><span data-i18n="load_game">Load Game</span>
+                    <input type="file" id="file-welcome-upload" accept=".json" hidden>
+                </label>
             </div>
         </section>
 
@@ -295,7 +304,7 @@
         </section>
     </main>
 
-    <script src="/static/js/i18n.js?v=30"></script>
-    <script src="/static/js/app.js?v=30"></script>
+    <script src="/static/js/i18n.js?v=31"></script>
+    <script src="/static/js/app.js?v=31"></script>
 </body>
 </html>

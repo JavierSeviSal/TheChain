@@ -100,6 +100,9 @@ const I18N = {
         no: "No",
         download_save: "⬇ Download Save",
         upload_save: "⬆ Upload Save",
+        save_load: "Save & Load",
+        save_hint: "Download to keep your game across sessions. Upload to restore a previous save.",
+        session_saves: "Session Saves",
     },
     es: {
         menu: "Menú",
@@ -188,6 +191,9 @@ const I18N = {
         no: "No",
         download_save: "⬇ Descargar Partida",
         upload_save: "⬆ Subir Partida",
+        save_load: "Guardar y Cargar",
+        save_hint: "Descarga para conservar tu partida entre sesiones. Sube para restaurar una partida anterior.",
+        session_saves: "Guardados de sesión",
     },
 };
 

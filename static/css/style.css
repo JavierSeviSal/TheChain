@@ -1121,17 +1121,42 @@ body {
 .save-file-actions {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
-.save-file-actions .menu-btn {
+.save-action-btn {
     flex: 1;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    padding: 12px 8px;
 }
 
 .upload-label {
     cursor: pointer;
     text-align: center;
+}
+
+.save-file-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0 0 16px;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.session-saves-details {
+    margin-bottom: 12px;
+}
+
+.session-saves-details summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    padding: 6px 0;
+    user-select: none;
+}
+
+.session-saves-details summary:hover {
+    color: var(--text);
 }
 
 /* ─── Quick Mode ──────────────────────────────────────────────── */

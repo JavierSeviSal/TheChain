@@ -226,12 +226,13 @@ document.addEventListener("DOMContentLoaded", () => {
 function bindEvents() {
     // Welcome
     $("#btn-welcome-new").onclick = () => showOverlay(newgameOverlay);
-    $("#btn-welcome-load").onclick = () => showLoadOverlay();
+    $("#file-welcome-upload").onchange = uploadSaveFromDevice;
+
 
     // Top bar
     $("#btn-menu").onclick = () => showOverlay(menuOverlay);
     $("#btn-undo").onclick = doUndo;
-    $("#btn-save").onclick = () => doSave("manual_save");
+    $("#btn-save").onclick = downloadSaveToDevice;
     btnLang.onclick = () => {
         const lang = toggleLang();
         btnLang.textContent = lang.toUpperCase();
@@ -241,8 +242,7 @@ function bindEvents() {
 
     // Menu
     $("#btn-new-game").onclick = () => { hideOverlay(menuOverlay); showOverlay(newgameOverlay); };
-    $("#btn-save-game").onclick = () => { hideOverlay(menuOverlay); promptSave(); };
-    $("#btn-load-game").onclick = () => { hideOverlay(menuOverlay); showLoadOverlay(); };
+    $("#btn-save-load").onclick = () => { hideOverlay(menuOverlay); showLoadOverlay(); };
     $("#btn-bank-break").onclick = doBankBreak;
     $("#btn-close-menu").onclick = () => hideOverlay(menuOverlay);
 
@@ -271,7 +271,7 @@ function bindEvents() {
     $("#btn-tab-scenarios").onclick = () => switchSetupTab("scenarios");
     buildScenarioList();
 
-    // Load
+    // Load / Save & Load
     $("#btn-close-load").onclick = () => hideOverlay(loadOverlay);
     $("#btn-download-save").onclick = downloadSaveToDevice;
     $("#file-upload-save").onchange = uploadSaveFromDevice;
@@ -1247,11 +1247,6 @@ async function doSave(slotName) {
     setStatus(result.message);
 }
 
-function promptSave() {
-    const name = prompt(t("save_name"), "save_" + Date.now());
-    if (name) doSave(name);
-}
-
 async function showLoadOverlay() {
     const saves = await API.get("/api/game/saves");
     const container = $("#saves-list");
@@ -1366,8 +1361,8 @@ function downloadSaveToDevice() {
     window.location.href = "/api/game/download";
 }
 
-async function uploadSaveFromDevice() {
-    const fileInput = $("#file-upload-save");
+async function uploadSaveFromDevice(e) {
+    const fileInput = e ? e.target : $("#file-upload-save");
     const file = fileInput.files[0];
     if (!file) return;
 
