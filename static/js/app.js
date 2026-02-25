@@ -2,11 +2,29 @@
    The Chain — Main Application JS
    ═══════════════════════════════════════════════════════════════════════ */
 
+// ─── Session ID ────────────────────────────────────────────────────────
+// Generate a stable session id on the client side and send it with every
+// request via the X-Session-ID header.  This avoids reliance on cookies,
+// which are blocked when the app runs inside a cross-site iframe
+// (e.g. Hugging Face Spaces embedded on huggingface.co).
+function _getSessionId() {
+    let sid = sessionStorage.getItem("thechain_sid");
+    if (!sid) {
+        sid = crypto.randomUUID().replace(/-/g, "");
+        sessionStorage.setItem("thechain_sid", sid);
+    }
+    return sid;
+}
+
 const API = {
     async post(url, data = {}) {
         const res = await fetch(url, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+                "Content-Type": "application/json",
+                "X-Session-ID": _getSessionId(),
+            },
+            credentials: "include",
             body: JSON.stringify(data),
         });
         if (!res.ok) {
@@ -17,7 +35,11 @@ const API = {
         return res.json();
     },
     async get(url) {
-        const res = await fetch(url, { cache: "no-store" });
+        const res = await fetch(url, {
+            cache: "no-store",
+            headers: { "X-Session-ID": _getSessionId() },
+            credentials: "include",
+        });
         if (!res.ok) {
             const text = await res.text();
             console.error(`API GET ${url} failed (${res.status}):`, text);
@@ -26,7 +48,11 @@ const API = {
         return res.json();
     },
     async del(url) {
-        const res = await fetch(url, { method: "DELETE" });
+        const res = await fetch(url, {
+            method: "DELETE",
+            headers: { "X-Session-ID": _getSessionId() },
+            credentials: "include",
+        });
         if (!res.ok) {
             const text = await res.text();
             console.error(`API DELETE ${url} failed (${res.status}):`, text);
@@ -1358,7 +1384,9 @@ async function quickUpdateTracks() {
 // ─── Download / Upload Save ───────────────────────────────────────────
 
 function downloadSaveToDevice() {
-    window.location.href = "/api/game/download";
+    // Navigation requests can't carry custom headers, so pass session id
+    // as a query parameter instead.
+    window.location.href = `/api/game/download?session_id=${_getSessionId()}`;
 }
 
 async function uploadSaveFromDevice(e) {
@@ -1370,7 +1398,12 @@ async function uploadSaveFromDevice(e) {
     form.append("file", file);
 
     try {
-        const res = await fetch("/api/game/upload", { method: "POST", body: form });
+        const res = await fetch("/api/game/upload", {
+            method: "POST",
+            headers: { "X-Session-ID": _getSessionId() },
+            credentials: "include",
+            body: form,
+        });
         const result = await res.json();
         if (result.status === "ok") {
             hideOverlay(loadOverlay);

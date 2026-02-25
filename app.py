@@ -42,16 +42,32 @@ _lock = threading.Lock()
 
 
 def _get_session_id() -> str:
-    """Return (or create) a session id via cookie.  Cached on g for the request."""
+    """Return (or create) a session id via cookie, header, or query param.
+
+    Resolution order:
+      1.  g._sid            (already resolved this request)
+      2.  X-Session-ID header  (client-generated, works in iframes)
+      3.  ?session_id query param  (for navigations like download)
+      4.  thechain_session cookie  (classic fallback)
+    """
     if hasattr(g, "_sid"):
         return g._sid
-    sid = request.cookies.get(COOKIE_NAME)
+
+    sid = (
+        request.headers.get("X-Session-ID")
+        or request.args.get("session_id")
+        or request.cookies.get(COOKIE_NAME)
+    )
+
     if sid and sid in _sessions:
         _sessions[sid]["last"] = time.time()
         g._sid = sid
         return sid
-    # New session
-    sid = uuid.uuid4().hex
+
+    # New session — reuse the client-supplied id when present so both
+    # sides agree on the key without a round-trip.
+    if not sid:
+        sid = uuid.uuid4().hex
     with _lock:
         _sessions[sid] = {"engine": GameEngine(), "last": time.time()}
     g._sid = sid
@@ -71,8 +87,15 @@ def _get_saves_dir() -> str:
 
 
 def _attach_cookie(response, sid: str):
+    # Use SameSite=None + Secure so the cookie works inside cross-site
+    # iframes (e.g. Hugging Face Spaces embeds).
     response.set_cookie(
-        COOKIE_NAME, sid, max_age=SESSION_TIMEOUT, httponly=True, samesite="Lax"
+        COOKIE_NAME,
+        sid,
+        max_age=SESSION_TIMEOUT,
+        httponly=True,
+        samesite="None",
+        secure=True,
     )
     return response
 
