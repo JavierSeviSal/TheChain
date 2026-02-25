@@ -1,2 +1,24 @@
+# ─── Hugging Face Xet Storage ────────────────────────────────────────────────
+# Large / binary files managed via git-xet (Hugging Face xet storage backend).
+# Run `git xet install` once per machine to register the filter driver.
+# See: https://huggingface.co/docs/hub/repositories-xet
+
+# Card images (~15 MB total, 92 files)
+static/cards/**/*.png filter=xet diff=xet merge=xet -text
+# Board / mat images
+static/boards/**/*.png filter=xet diff=xet merge=xet -text
+# Catch-all for any future image assets
+*.png filter=xet diff=xet merge=xet -text
+*.jpg filter=xet diff=xet merge=xet -text
+*.jpeg filter=xet diff=xet merge=xet -text
+*.gif filter=xet diff=xet merge=xet -text
+*.webp filter=xet diff=xet merge=xet -text
+*.svg filter=xet diff=xet merge=xet -text
+# Other binary formats that may appear in the future
+*.pdf filter=xet diff=xet merge=xet -text
+*.zip filter=xet diff=xet merge=xet -text
+*.tar.gz filter=xet diff=xet merge=xet -text
+*.mp3 filter=xet diff=xet merge=xet -text
+*.mp4 filter=xet diff=xet merge=xet -text
 *.png filter=lfs diff=lfs merge=lfs -text
 *.pdf filter=lfs diff=lfs merge=lfs -text
