@@ -591,6 +591,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Contratar 3 en 1 Turno",
         "chain_can_claim": True,
         "trigger_hint": "rt_track_3",
+        "color": "#666661",
     },
     {
         "key": "first_to_throw_away",
@@ -598,6 +599,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Tirar Comida/Bebida",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#3EAE48",
     },
     {
         "key": "first_waitress_played",
@@ -605,6 +607,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Camarera Jugada",
         "chain_can_claim": True,
         "trigger_hint": "waitress_track",
+        "color": "#8961A5",
     },
     {
         "key": "first_to_have_20",
@@ -612,6 +615,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Tener $20",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_cash",
+        "color": "#8961A5",
     },
     {
         "key": "first_to_have_100",
@@ -619,6 +623,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Tener $100",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_cash",
+        "color": "#8961A5",
     },
     {
         "key": "first_to_lower_prices",
@@ -626,6 +631,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Bajar Precios",
         "chain_can_claim": True,
         "trigger_hint": "price_track",
+        "color": "#D8876A",
     },
     {
         "key": "first_to_train",
@@ -633,6 +639,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Entrenar",
         "chain_can_claim": True,
         "trigger_hint": "rt_track_2",
+        "color": "#666661",
     },
     {
         "key": "first_to_pay_20_salary",
@@ -640,6 +647,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primero en Pagar $20+ en Salarios",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#666661",
     },
     {
         "key": "first_errand_boy",
@@ -647,6 +655,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primer Chico de los Recados",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#7AC252",
     },
     {
         "key": "first_cart_operator",
@@ -654,6 +663,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primer Operador de Carrito",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#7AC252",
     },
     {
         "key": "first_burger_produced",
@@ -661,6 +671,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Hamburguesa Producida",
         "chain_can_claim": True,
         "trigger_hint": "inventory_add_burger",
+        "color": "#3EAE48",
     },
     {
         "key": "first_pizza_produced",
@@ -668,6 +679,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Pizza Producida",
         "chain_can_claim": True,
         "trigger_hint": "inventory_add_pizza",
+        "color": "#3EAE48",
     },
     {
         "key": "first_pizza_marketed",
@@ -675,6 +687,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Pizza en Marketing",
         "chain_can_claim": True,
         "trigger_hint": "marketing_item",
+        "color": "#5183C3",
     },
     {
         "key": "first_drink_marketed",
@@ -682,6 +695,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Bebida en Marketing",
         "chain_can_claim": True,
         "trigger_hint": "marketing_item",
+        "color": "#5183C3",
     },
     {
         "key": "first_burger_marketed",
@@ -689,6 +703,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Hamburguesa en Marketing",
         "chain_can_claim": True,
         "trigger_hint": "marketing_item",
+        "color": "#5183C3",
     },
     {
         "key": "first_billboard_placed",
@@ -696,6 +711,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primer Cartel Colocado",
         "chain_can_claim": True,
         "trigger_hint": "campaign_type",
+        "color": "#5183C3",
     },
     {
         "key": "first_airplane_campaign",
@@ -703,6 +719,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Campaña en Avioneta",
         "chain_can_claim": True,
         "trigger_hint": "campaign_type",
+        "color": "#5183C3",
     },
     {
         "key": "first_radio_campaign",
@@ -710,6 +727,7 @@ BASE_MILESTONES: list[dict] = [
         "label_es": "Primera Campaña de Radio",
         "chain_can_claim": True,
         "trigger_hint": "campaign_type",
+        "color": "#5183C3",
     },
 ]
 
@@ -720,6 +738,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Marketeer Usado",
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
+        "color": "#5183C3",
     },
     {
         "key": "first_brand_director_used",
@@ -727,6 +746,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Director de Marca Usado",
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
+        "color": "#5183C3",
     },
     {
         "key": "first_campaign_manager_used",
@@ -734,6 +754,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Gerente de Campaña Usado",
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
+        "color": "#5183C3",
     },
     {
         "key": "first_brand_manager_used",
@@ -741,6 +762,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Gerente de Marca Usado",
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
+        "color": "#5183C3",
     },
     {
         "key": "first_marketing_trainee_used",
@@ -748,6 +770,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Aprendiz de Marketing Usado",
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
+        "color": "#5183C3",
     },
     {
         "key": "first_burger_sold",
@@ -755,6 +778,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Hamburguesa Vendida",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
+        "color": "#3EAE48",
     },
     {
         "key": "first_pizza_sold",
@@ -762,6 +786,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Pizza Vendida",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
+        "color": "#3EAE48",
     },
     {
         "key": "first_lemonade_sold",
@@ -769,6 +794,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Limonada Vendida",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
+        "color": "#7AC252",
     },
     {
         "key": "first_beer_sold",
@@ -776,6 +802,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Cerveza Vendida",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
+        "color": "#7AC252",
     },
     {
         "key": "first_cart_operator_used",
@@ -783,6 +810,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Operador de Carrito Usado",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#7AC252",
     },
     {
         "key": "first_soda_sold",
@@ -790,6 +818,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Refresco Vendido",
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
+        "color": "#7AC252",
     },
     {
         "key": "first_recruiting_girl_used",
@@ -797,6 +826,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Chica de Reclutamiento Usada",
         "chain_can_claim": False,
         "trigger_hint": "never",
+        "color": "#666661",
     },
     {
         "key": "first_trainer_used",
@@ -804,6 +834,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Entrenador Usado",
         "chain_can_claim": False,
         "trigger_hint": "never",
+        "color": "#666661",
     },
     {
         "key": "first_discount_manager_used",
@@ -811,6 +842,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Gerente de Descuentos Usado",
         "chain_can_claim": True,
         "trigger_hint": "card_action",
+        "color": "#D8876A",
     },
     {
         "key": "first_house_built",
@@ -818,6 +850,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Casa Construida",
         "chain_can_claim": True,
         "trigger_hint": "develop_house",
+        "color": "#8961A5",
     },
     {
         "key": "first_new_restaurant",
@@ -825,6 +858,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primer Restaurante Nuevo",
         "chain_can_claim": True,
         "trigger_hint": "expand_chain",
+        "color": "#B12F31",
     },
     {
         "key": "first_waitress_used",
@@ -832,6 +866,7 @@ EXPANSION_MILESTONES: list[dict] = [
         "label_es": "Primera Camarera Usada",
         "chain_can_claim": True,
         "trigger_hint": "waitress_track",
+        "color": "#8961A5",
     },
 ]
 
@@ -844,6 +879,7 @@ MODULE_MILESTONES: list[dict] = [
         "chain_can_claim": True,
         "trigger_hint": "ketchup_dinnertime",
         "required_module": "ketchup",
+        "color": "#050607",
     },
     {
         "key": "first_rural_marketeer_used",
@@ -852,6 +888,7 @@ MODULE_MILESTONES: list[dict] = [
         "chain_can_claim": True,
         "trigger_hint": "recruit_marketeer",
         "required_module": "rural_marketeer",
+        "color": "#749B98",
     },
     {
         "key": "first_coffee_sold",
@@ -860,6 +897,7 @@ MODULE_MILESTONES: list[dict] = [
         "chain_can_claim": True,
         "trigger_hint": "dinnertime_sold",
         "required_module": "coffee",
+        "color": "#89C4A4",
     },
     {
         "key": "first_lobbyist_used",
@@ -868,6 +906,7 @@ MODULE_MILESTONES: list[dict] = [
         "chain_can_claim": True,
         "trigger_hint": "lobby_action",
         "required_module": "lobbyists",
+        "color": "#8961A5",
     },
 ]
 
@@ -941,10 +980,14 @@ PRODUCED_ITEM_MILESTONES: dict[str, str] = {
 DRINK_ITEMS: set[str] = {"beer", "lemonade", "softdrink"}
 
 # Employees that gain extra copies when a module is active.
-# key = employee name, value = {"module": <module key>, "extra": <additional copies>}
+# key = employee name, value = {"modules": [<module keys>], "extra": <additional copies>}
 # Default max copies per employee is 1; entries here raise it to 1 + extra.
+# If ANY of the listed modules is active, the extra copies are granted (not cumulative).
 EMPLOYEE_EXTRA_COPIES: dict[str, dict] = {
-    "Luxuries Manager": {"module": "coffee", "extra": 1},
+    "Luxuries Manager": {
+        "modules": ["coffee", "noodle", "kimchi", "sushi"],
+        "extra": 1,
+    },
 }
 
 
@@ -1253,7 +1296,12 @@ class GameState:
             "milestones_turn2_tokens": self.milestones_turn2_tokens,
             "phase_before_milestone": self.phase_before_milestone,
             "active_milestones": [
-                {"key": m["key"], "label_en": m["label_en"], "label_es": m["label_es"]}
+                {
+                    "key": m["key"],
+                    "label_en": m["label_en"],
+                    "label_es": m["label_es"],
+                    "color": m.get("color", ""),
+                }
                 for m in get_active_milestones(self.modules)
             ],
             "pending_competition_actions": self.pending_competition_actions,

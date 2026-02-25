@@ -263,7 +263,7 @@ class GameEngine:
 
         max_copies = 1
         extra = EMPLOYEE_EXTRA_COPIES.get(name)
-        if extra and self.state.modules.get(extra["module"], False):
+        if extra and any(self.state.modules.get(m, False) for m in extra["modules"]):
             max_copies += extra["extra"]
 
         return count >= max_copies
@@ -3433,10 +3433,20 @@ class GameEngine:
         )
         active_ms = get_active_milestones(self.state.modules)
 
+        # Build a quick lookup for color from the active milestone definitions
+        color_lookup = {m["key"]: m.get("color", "") for m in active_ms}
+
         chain_claimed_info = []
         for key in self.state.milestones_claimed_this_round:
             en, es = self.MILESTONE_LABELS.get(key, (key, key))
-            chain_claimed_info.append({"key": key, "label_en": en, "label_es": es})
+            chain_claimed_info.append(
+                {
+                    "key": key,
+                    "label_en": en,
+                    "label_es": es,
+                    "color": color_lookup.get(key, ""),
+                }
+            )
 
         still_available_info = []
         for m in active_ms:
@@ -3447,6 +3457,7 @@ class GameEngine:
                         "key": key,
                         "label_en": m["label_en"],
                         "label_es": m["label_es"],
+                        "color": m.get("color", ""),
                     }
                 )
 

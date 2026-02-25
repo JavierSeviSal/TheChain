@@ -491,8 +491,16 @@ function showInputPrompt(input) {
 
     // ── Milestone roundup — custom two-section UI ─────────────────────
     if (input.type === "milestone_player_roundup") {
-        const chainClaimed = input.chain_claimed || [];
-        const available = input.available || [];
+        const chainClaimed = [...(input.chain_claimed || [])].sort((a, b) => {
+            const ca = (a.color || "").toLowerCase();
+            const cb = (b.color || "").toLowerCase();
+            return ca < cb ? -1 : ca > cb ? 1 : 0;
+        });
+        const available = [...(input.available || [])].sort((a, b) => {
+            const ca = (a.color || "").toLowerCase();
+            const cb = (b.color || "").toLowerCase();
+            return ca < cb ? -1 : ca > cb ? 1 : 0;
+        });
 
         if (chainClaimed.length > 0) {
             const notice = document.createElement("div");
@@ -516,6 +524,7 @@ function showInputPrompt(input) {
                 const labelText = currentLang === "es" ? m.label_es : m.label_en;
                 lbl.appendChild(cb);
                 lbl.appendChild(document.createTextNode(" 🏆 " + labelText));
+                if (m.color) lbl.style.borderLeft = "3px solid " + m.color;
                 group.appendChild(lbl);
             });
             notice.appendChild(group);
@@ -544,6 +553,7 @@ function showInputPrompt(input) {
                 const labelText = currentLang === "es" ? m.label_es : m.label_en;
                 lbl.appendChild(cb);
                 lbl.appendChild(document.createTextNode(" " + labelText));
+                if (m.color) lbl.style.borderLeft = "3px solid " + m.color;
                 group.appendChild(lbl);
             });
             section.appendChild(group);
@@ -948,8 +958,16 @@ function updateMilestones() {
     const activeMilestones = gameState.active_milestones || [];
 
     if (activeMilestones.length > 0) {
+        // Sort milestones by color so they group visually
+        const sorted = [...activeMilestones].sort((a, b) => {
+            const ca = (a.color || "").toLowerCase();
+            const cb = (b.color || "").toLowerCase();
+            if (ca < cb) return -1;
+            if (ca > cb) return 1;
+            return 0;
+        });
         // Show full milestone board with status indicators
-        activeMilestones.forEach(m => {
+        sorted.forEach(m => {
             const tag = document.createElement("span");
             const label = currentLang === "es" ? m.label_es : m.label_en;
             if (claimed.has(m.key)) {
@@ -975,6 +993,10 @@ function updateMilestones() {
                 } else {
                     tag.title = currentLang === "es" ? "Disponible" : "Available";
                 }
+            }
+            // Apply color-coded left border accent if a color is defined
+            if (m.color) {
+                tag.style.borderLeft = "3px solid " + m.color;
             }
             container.appendChild(tag);
         });

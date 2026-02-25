@@ -917,6 +917,10 @@ body {
     color: var(--text-muted);
     opacity: 0.8;
 }
+/* Color-coded left border accent (applied via inline style from milestone data) */
+.tag[style*="border-left"] {
+    padding-left: 10px;
+}
 .tag.restaurant { border: 1px solid var(--green); color: var(--green); }
 
 /* ─── Milestone Roundup Prompt ───────────────────────────────── */
@@ -1070,6 +1074,15 @@ body {
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.85rem;
+}
+
+.checkbox-group label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    padding: 0;
+    flex-shrink: 0;
+    accent-color: var(--accent);
 }
 
 /* ─── Save List ──────────────────────────────────────────────── */
