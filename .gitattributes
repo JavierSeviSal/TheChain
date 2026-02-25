@@ -1,24 +1,21 @@
 # ─── Hugging Face Xet Storage ────────────────────────────────────────────────
-# Large / binary files managed via git-xet (Hugging Face xet storage backend).
-# Run `git xet install` once per machine to register the filter driver.
+# Large / binary files tracked via Git LFS with xet as the transfer backend.
+# Run `git xet install` once per machine to register the xet transfer agent.
 # See: https://huggingface.co/docs/hub/repositories-xet
-
 # Card images (~15 MB total, 92 files)
-static/cards/**/*.png filter=xet diff=xet merge=xet -text
+static/cards/**/*.png filter=lfs diff=lfs merge=lfs -text
 # Board / mat images
-static/boards/**/*.png filter=xet diff=xet merge=xet -text
+static/boards/**/*.png filter=lfs diff=lfs merge=lfs -text
 # Catch-all for any future image assets
-*.png filter=xet diff=xet merge=xet -text
-*.jpg filter=xet diff=xet merge=xet -text
-*.jpeg filter=xet diff=xet merge=xet -text
-*.gif filter=xet diff=xet merge=xet -text
-*.webp filter=xet diff=xet merge=xet -text
-*.svg filter=xet diff=xet merge=xet -text
-# Other binary formats that may appear in the future
-*.pdf filter=xet diff=xet merge=xet -text
-*.zip filter=xet diff=xet merge=xet -text
-*.tar.gz filter=xet diff=xet merge=xet -text
-*.mp3 filter=xet diff=xet merge=xet -text
-*.mp4 filter=xet diff=xet merge=xet -text
 *.png filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.gif filter=lfs diff=lfs merge=lfs -text
+*.webp filter=lfs diff=lfs merge=lfs -text
+*.svg filter=lfs diff=lfs merge=lfs -text
+# Other binary formats that may appear in the future
 *.pdf filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.tar.gz filter=lfs diff=lfs merge=lfs -text
+*.mp3 filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
