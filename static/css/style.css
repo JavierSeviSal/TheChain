@@ -1135,6 +1135,31 @@ body {
     text-align: center;
 }
 
+.credits {
+    margin-top: 20px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+}
+
+.credits p {
+    /* margin: 0; */
+    margin-bottom: 8px;
+}
+
+.credits a {
+    color: var(--accent);
+    text-decoration: none;
+    /* padding: 16px; */
+
+}
+
+.credits a:hover {
+    color: var(--accent2);
+    text-decoration: underline;
+    
+}
+
 .save-file-hint {
     font-size: 0.75rem;
     color: var(--text-muted);

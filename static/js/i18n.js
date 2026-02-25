@@ -103,6 +103,8 @@ const I18N = {
         save_load: "Save & Load",
         save_hint: "Download to keep your game across sessions. Upload to restore a previous save.",
         session_saves: "Session Saves",
+        credits_opener: "Original Automa created by",
+        credits_app: "Digital companion created by",
     },
     es: {
         menu: "Menú",
@@ -194,6 +196,8 @@ const I18N = {
         save_load: "Guardar y Cargar",
         save_hint: "Descarga para conservar tu partida entre sesiones. Sube para restaurar una partida anterior.",
         session_saves: "Guardados de sesión",
+        credits_opener: "Automa original creado por",
+        credits_app: "Compañero digital creado por",
     },
 };
 
