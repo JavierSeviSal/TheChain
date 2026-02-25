@@ -1118,6 +1118,22 @@ body {
     padding: 4px 8px;
 }
 
+.save-file-actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.save-file-actions .menu-btn {
+    flex: 1;
+    font-size: 0.85rem;
+}
+
+.upload-label {
+    cursor: pointer;
+    text-align: center;
+}
+
 /* ─── Quick Mode ──────────────────────────────────────────────── */
 
 .quick-panel {

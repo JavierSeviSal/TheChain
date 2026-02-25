@@ -9,14 +9,29 @@ const API = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`API POST ${url} failed (${res.status}):`, text);
+            throw new Error(`Server error ${res.status}`);
+        }
         return res.json();
     },
     async get(url) {
         const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`API GET ${url} failed (${res.status}):`, text);
+            throw new Error(`Server error ${res.status}`);
+        }
         return res.json();
     },
     async del(url) {
         const res = await fetch(url, { method: "DELETE" });
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`API DELETE ${url} failed (${res.status}):`, text);
+            throw new Error(`Server error ${res.status}`);
+        }
         return res.json();
     },
 };
@@ -258,6 +273,8 @@ function bindEvents() {
 
     // Load
     $("#btn-close-load").onclick = () => hideOverlay(loadOverlay);
+    $("#btn-download-save").onclick = downloadSaveToDevice;
+    $("#file-upload-save").onchange = uploadSaveFromDevice;
 
     // Card zoom
     $$(".card-img").forEach(img => {
@@ -401,45 +418,62 @@ async function startNewGame() {
 
 async function advancePhase() {
     btnAdvance.disabled = true;
-    const result = await API.post("/api/game/advance");
-    btnAdvance.disabled = false;
+    try {
+        const result = await API.post("/api/game/advance");
+        btnAdvance.disabled = false;
 
-    await refreshState();
-    // Show original phase message if milestones intercepted the result
-    setStatus(result.phase_message || result.message);
+        await refreshState();
+        // Show original phase message if milestones intercepted the result
+        setStatus(result.phase_message || result.message);
 
-    // Handle waiting for input
-    if (result.status === "waiting" && result.input_needed) {
-        showInputPrompt(result.input_needed);
-    }
+        // Handle waiting for input
+        if (result.status === "waiting" && result.input_needed) {
+            showInputPrompt(result.input_needed);
+        }
 
-    // Update cards from result
-    if (result.current_back_card) {
-        updateCardImage("back", result.current_back_card);
-    }
-    if (result.current_front_card) {
-        updateCardImage("front", result.current_front_card);
-    }
+        // Update cards from result
+        if (result.current_back_card) {
+            updateCardImage("back", result.current_back_card);
+        }
+        if (result.current_front_card) {
+            updateCardImage("front", result.current_front_card);
+        }
 
-    // Game over — refreshState() already handles button text via refreshUI()
-    if (result.status === "game_over") {
-        btnAdvance.disabled = true;
-        btnAdvance.classList.remove("pulse");
+        // Game over — refreshState() already handles button text via refreshUI()
+        if (result.status === "game_over") {
+            btnAdvance.disabled = true;
+            btnAdvance.classList.remove("pulse");
+        }
+    } catch (e) {
+        console.error("advancePhase error:", e);
+        btnAdvance.disabled = false;
+        setStatus("Error advancing phase. Please try again.");
+        await refreshState();
     }
 }
 
 async function submitInput() {
     const formData = collectInputData();
-    if (!formData) return;
+    console.log("submitInput called, formData:", JSON.stringify(formData));
+    if (!formData) { console.warn("submitInput: no formData, returning"); return; }
 
     hideOverlay(inputOverlay);
-    const result = await API.post("/api/game/input", formData);
-    await refreshState();
-    // Show original phase message if milestones intercepted the result
-    setStatus(result.phase_message || result.message);
+    try {
+        console.log("submitInput: calling API.post...");
+        const result = await API.post("/api/game/input", formData);
+        console.log("submitInput: API response:", JSON.stringify(result));
+        await refreshState();
+        console.log("submitInput: refreshState done");
+        // Show original phase message if milestones intercepted the result
+        setStatus(result.phase_message || result.message);
 
-    if (result.status === "waiting" && result.input_needed) {
-        showInputPrompt(result.input_needed);
+        if (result.status === "waiting" && result.input_needed) {
+            showInputPrompt(result.input_needed);
+        }
+    } catch (e) {
+        console.error("submitInput error:", e);
+        setStatus("Error processing input. Please try again.");
+        await refreshState();
     }
 }
 
@@ -1324,4 +1358,37 @@ async function quickUpdateTracks() {
     });
     await refreshState();
     setStatus(currentLang === "es" ? "Pistas actualizadas." : "Tracks updated.");
+}
+
+// ─── Download / Upload Save ───────────────────────────────────────────
+
+function downloadSaveToDevice() {
+    window.location.href = "/api/game/download";
+}
+
+async function uploadSaveFromDevice() {
+    const fileInput = $("#file-upload-save");
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+        const res = await fetch("/api/game/upload", { method: "POST", body: form });
+        const result = await res.json();
+        if (result.status === "ok") {
+            hideOverlay(loadOverlay);
+            gameActive = true;
+            welcomeScreen.classList.add("hidden");
+            gameScreen.classList.remove("hidden");
+            await refreshState();
+            setStatus(result.message);
+        } else {
+            setStatus(result.message);
+        }
+    } catch (e) {
+        setStatus("Upload failed: " + e.message);
+    }
+    fileInput.value = "";
 }

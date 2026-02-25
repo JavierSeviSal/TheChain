@@ -34,13 +34,16 @@ SAVES_DIR = os.path.join(
 )
 
 
-def ensure_saves_dir():
-    os.makedirs(SAVES_DIR, exist_ok=True)
+def ensure_saves_dir(saves_dir: str | None = None):
+    os.makedirs(saves_dir or SAVES_DIR, exist_ok=True)
 
 
-def save_game(state: GameState, slot_name: str = "autosave") -> dict:
+def save_game(
+    state: GameState, slot_name: str = "autosave", saves_dir: str | None = None
+) -> dict:
     """Save the full game state to a JSON file."""
-    ensure_saves_dir()
+    target = saves_dir or SAVES_DIR
+    ensure_saves_dir(target)
 
     save_data = {
         "meta": {
@@ -53,7 +56,7 @@ def save_game(state: GameState, slot_name: str = "autosave") -> dict:
         "state": _serialize_full_state(state),
     }
 
-    filepath = os.path.join(SAVES_DIR, f"{slot_name}.json")
+    filepath = os.path.join(target, f"{slot_name}.json")
     with open(filepath, "w") as f:
         json.dump(save_data, f, indent=2)
 
@@ -64,10 +67,11 @@ def save_game(state: GameState, slot_name: str = "autosave") -> dict:
     }
 
 
-def load_game(slot_name: str) -> Optional[GameState]:
+def load_game(slot_name: str, saves_dir: str | None = None) -> Optional[GameState]:
     """Load game state from a JSON file."""
-    ensure_saves_dir()
-    filepath = os.path.join(SAVES_DIR, f"{slot_name}.json")
+    target = saves_dir or SAVES_DIR
+    ensure_saves_dir(target)
+    filepath = os.path.join(target, f"{slot_name}.json")
 
     if not os.path.exists(filepath):
         return None
@@ -78,13 +82,14 @@ def load_game(slot_name: str) -> Optional[GameState]:
     return _deserialize_full_state(save_data["state"])
 
 
-def list_saves() -> list[dict]:
+def list_saves(saves_dir: str | None = None) -> list[dict]:
     """List all saved games with metadata."""
-    ensure_saves_dir()
+    target = saves_dir or SAVES_DIR
+    ensure_saves_dir(target)
     saves = []
-    for filename in sorted(os.listdir(SAVES_DIR)):
+    for filename in sorted(os.listdir(target)):
         if filename.endswith(".json"):
-            filepath = os.path.join(SAVES_DIR, filename)
+            filepath = os.path.join(target, filename)
             try:
                 with open(filepath, "r") as f:
                     data = json.load(f)
@@ -104,10 +109,11 @@ def list_saves() -> list[dict]:
     return saves
 
 
-def delete_save(slot_name: str) -> dict:
+def delete_save(slot_name: str, saves_dir: str | None = None) -> dict:
     """Delete a saved game."""
-    ensure_saves_dir()
-    filepath = os.path.join(SAVES_DIR, f"{slot_name}.json")
+    target = saves_dir or SAVES_DIR
+    ensure_saves_dir(target)
+    filepath = os.path.join(target, f"{slot_name}.json")
     if os.path.exists(filepath):
         os.remove(filepath)
         return {"status": "ok", "message": f"Save '{slot_name}' deleted."}

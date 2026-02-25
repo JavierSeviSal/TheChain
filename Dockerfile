@@ -12,9 +12,9 @@ COPY game/ game/
 COPY static/ static/
 COPY templates/ templates/
 
-# Create saves directory (will be overridden by volume mount)
-RUN mkdir -p saves
+# Create saves directory writable by any user (HF Spaces may run as non-root)
+RUN mkdir -p saves && chmod 777 saves
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "app:app"]

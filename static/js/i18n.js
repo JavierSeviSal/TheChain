@@ -98,6 +98,8 @@ const I18N = {
         mod_milestones: "New Milestones",
         yes: "Yes",
         no: "No",
+        download_save: "⬇ Download Save",
+        upload_save: "⬆ Upload Save",
     },
     es: {
         menu: "Menú",
@@ -184,6 +186,8 @@ const I18N = {
         mod_milestones: "Nuevos Hitos",
         yes: "Sí",
         no: "No",
+        download_save: "⬇ Descargar Partida",
+        upload_save: "⬆ Subir Partida",
     },
 };
 
