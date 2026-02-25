@@ -1,3 +1,13 @@
+---
+title: The Chain
+emoji: 🍔
+colorFrom: red
+colorTo: yellow
+sdk: docker
+app_port: 5000
+pinned: false
+---
+
 # The Chain — Digital Companion
 
 A web-based companion app for **The Chain**, the solo automa variant for the board game **Food Chain Magnate**.  
