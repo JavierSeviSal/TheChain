@@ -117,7 +117,15 @@ class GameEngine:
         self.state.is_first_turn = True
 
         # Secretly pick one of the three bank reserve cards (revealed on first bank break)
-        self.state.bank_reserve_card = random.choice(["100", "200", "300"])
+        if self.state.modules.get("reserve_prices"):
+            # Reserve Prices module: use alternate Base Price cards ($5/$10/$20)
+            self.state.bank_reserve_card = random.choice(["5", "10", "20"])
+            self.state.log(
+                "Reserve Prices module active — using alternate Base Price reserve cards.",
+                "setup",
+            )
+        else:
+            self.state.bank_reserve_card = random.choice(["100", "200", "300"])
 
         # Initialize milestone system based on active modules
         if self.state.modules.get("milestones"):
@@ -614,10 +622,18 @@ class GameEngine:
                     "message": "Second bank break! The game is over!",
                 }
             # First bank break — reveal the secretly chosen reserve card
+            is_rp = bool(self.state.modules.get("reserve_prices"))
+            if is_rp:
+                self.state.log(
+                    f"Reserve Prices: The Chain's base price card is ${self.state.bank_reserve_card}. "
+                    f"Add $400 to the bank (2 players × $200).",
+                    "game",
+                )
             return {
                 "status": "ok",
                 "message": f"Bank break #{self.state.bank_breaks} recorded.",
                 "reveal_reserve_card": self.state.bank_reserve_card,
+                "reserve_prices_module": is_rp,
             }
 
         elif input_type == "acknowledge_competition_card":

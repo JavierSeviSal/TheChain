@@ -1334,7 +1334,23 @@ async function doBankBreak() {
     const result = await API.post("/api/game/input", { type: "bank_break" });
     await refreshState();
     if (result.reveal_reserve_card) {
-        $("#reserve-reveal-img").src = `/static/cards/reserve${result.reveal_reserve_card}.jpg`;
+        if (result.reserve_prices_module) {
+            // Reserve Prices module: show alternate Base Price card image (.png)
+            $("#reserve-reveal-img").src = `/static/cards/reserve_price_${result.reveal_reserve_card}.png`;
+            $("#reserve-reveal-header").textContent = "🏦 The Chain's Base Price Reserve";
+            $("#reserve-reveal-sub").textContent =
+                "The base price card secretly chosen at the start of this game was…";
+            $("#reserve-reveal-extra").textContent =
+                "Add $400 to the bank (2 players × $200). Compare this card with yours to determine the new base unit price.";
+            $("#reserve-reveal-extra").classList.remove("hidden");
+        } else {
+            // Base game: show standard reserve card image (.jpg)
+            $("#reserve-reveal-img").src = `/static/cards/reserve${result.reveal_reserve_card}.jpg`;
+            $("#reserve-reveal-header").textContent = "🏦 The Chain's Bank Reserve";
+            $("#reserve-reveal-sub").textContent =
+                "The bank card secretly chosen at the start of this game was…";
+            $("#reserve-reveal-extra").classList.add("hidden");
+        }
         showOverlay($("#reserve-reveal-overlay"));
     } else {
         setStatus(result.message);

@@ -131,9 +131,10 @@
     <!-- ─── Reserve Card Reveal Overlay ────────────────────────── -->
     <div id="reserve-reveal-overlay" class="overlay hidden" onclick="closeReserveReveal()">
         <div class="reserve-reveal-content" onclick="event.stopPropagation()">
-            <div class="reserve-reveal-header">🏦 The Chain's Bank Reserve</div>
-            <p class="reserve-reveal-sub">The bank card secretly chosen at the start of this game was…</p>
+            <div id="reserve-reveal-header" class="reserve-reveal-header">🏦 The Chain's Bank Reserve</div>
+            <p id="reserve-reveal-sub" class="reserve-reveal-sub">The bank card secretly chosen at the start of this game was…</p>
             <img id="reserve-reveal-img" src="" alt="Reserve card" class="reserve-reveal-img">
+            <p id="reserve-reveal-extra" class="reserve-reveal-sub hidden" style="margin-top:0.5rem;font-weight:600;"></p>
             <button class="primary-btn" onclick="closeReserveReveal()">Got it</button>
         </div>
     </div>
