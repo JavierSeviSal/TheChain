@@ -443,6 +443,13 @@ async function startNewGame() {
 // ─── Game Flow ─────────────────────────────────────────────────────────
 
 async function advancePhase() {
+    // Game over — return to welcome screen instead of calling the API
+    if (gameState && gameState.phase === "game_over") {
+        gameScreen.classList.add("hidden");
+        welcomeScreen.classList.remove("hidden");
+        gameActive = false;
+        return;
+    }
     btnAdvance.disabled = true;
     try {
         const result = await API.post("/api/game/advance");
@@ -463,12 +470,6 @@ async function advancePhase() {
         }
         if (result.current_front_card) {
             updateCardImage("front", result.current_front_card);
-        }
-
-        // Game over — refreshState() already handles button text via refreshUI()
-        if (result.status === "game_over") {
-            btnAdvance.disabled = true;
-            btnAdvance.classList.remove("pulse");
         }
     } catch (e) {
         console.error("advancePhase error:", e);
@@ -788,8 +789,8 @@ function refreshUI() {
     }
     btnAdvance.textContent = getAdvanceLabel(labelPhase);
     if (gameState.phase === "game_over") {
-        btnAdvance.disabled = true;
-        btnAdvance.classList.remove("pulse");
+        btnAdvance.disabled = false;
+        btnAdvance.classList.add("pulse");
     } else if (gameState.phase === "waiting_for_input") {
         if (gameState.pending_input) {
             // Active prompt — disable Advance, show the input overlay
