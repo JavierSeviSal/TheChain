@@ -175,6 +175,35 @@ def undo():
     return jsonify(result)
 
 
+@app.route("/api/game/view_reserve", methods=["POST"])
+def view_reserve():
+    """View the Chain's reserve card if player has 'first_to_have_20' milestone."""
+    engine = _get_engine()
+
+    # Check if player has the required milestone
+    if "first_to_have_20" not in engine.state.milestones_unavailable:
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "message": "You need the 'First to Have $20' milestone to view the reserve card!",
+                }
+            ),
+            403,
+        )
+
+    # Return reserve card info without triggering a bank break
+    is_rp = bool(engine.state.modules.get("reserve_prices"))
+    return jsonify(
+        {
+            "status": "ok",
+            "reserve_card": engine.state.bank_reserve_card,
+            "reserve_prices_module": is_rp,
+            "milestone_benefit": True,
+        }
+    )
+
+
 @app.route("/api/game/mode", methods=["POST"])
 def set_mode():
     data = request.json or {}
@@ -205,13 +234,48 @@ def quick_draw():
     return jsonify(result)
 
 
-@app.route("/api/game/quick/track", methods=["POST"])
-def quick_track():
+@app.route("/api/game/quick/shuffle", methods=["POST"])
+def quick_shuffle():
     data = request.json or {}
     engine = _get_engine()
-    result = engine.quick_update_track(
-        data.get("track", ""),
-        data.get("value", 0),
+    result = engine.quick_shuffle_deck(data.get("deck", ""))
+    return jsonify(result)
+
+
+@app.route("/api/game/quick/discard", methods=["POST"])
+def quick_discard():
+    data = request.json or {}
+    engine = _get_engine()
+    result = engine.quick_discard(data.get("deck", ""))
+    return jsonify(result)
+
+
+@app.route("/api/game/quick/draw_competition", methods=["POST"])
+def quick_draw_competition():
+    data = request.json or {}
+    engine = _get_engine()
+    result = engine.quick_draw_competition(data.get("deck", ""))
+    return jsonify(result)
+
+
+@app.route("/api/game/quick/resolve_competition", methods=["POST"])
+def quick_resolve_competition():
+    data = request.json or {}
+    engine = _get_engine()
+    result = engine.quick_resolve_competition(
+        data.get("deck", ""),
+        data.get("resolved", False),
+    )
+    return jsonify(result)
+
+
+@app.route("/api/game/quick/place", methods=["POST"])
+def quick_place():
+    data = request.json or {}
+    engine = _get_engine()
+    result = engine.quick_place_on_action(
+        data.get("deck", ""),
+        data.get("position", "bottom"),
     )
     return jsonify(result)
 

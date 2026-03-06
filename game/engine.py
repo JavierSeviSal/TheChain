@@ -2998,10 +2998,30 @@ class GameEngine:
         )
         self.state.log(info, "dinnertime")
 
+        # Build inventory display for items with count > 0
+        inventory_display = []
+        food_icons = {
+            "burger": "🍔",
+            "pizza": "🍕",
+            "beer": "🍺",
+            "lemonade": "🍋",
+            "softdrink": "🥤",
+            "sushi": "🍣",
+            "noodle": "🍜",
+            "coffee": "☕",
+            "kimchi": "🥬",
+        }
+        for item, count in self.state.inventory.items.items():
+            if count > 0:
+                inventory_display.append(
+                    {"item": item, "count": count, "icon": food_icons.get(item, "")}
+                )
+
         self.state.pending_input = {
             "type": "dinnertime_result",
             "prompt": f"Enter dinnertime earnings. {info}",
             "prompt_es": f"Introduce las ganancias de la cena. {info}",
+            "inventory_display": inventory_display,
             "fields": [
                 {
                     "name": "chain_earned",
@@ -3603,17 +3623,119 @@ class GameEngine:
             "deck_size": self.state.action_deck.size(),
         }
 
-    def quick_update_track(self, track_name: str, value: int) -> dict:
-        """Quick mode: manually set a track value."""
-        if track_name == "recruit_train":
-            self.state.tracks.recruit_train.position = max(1, min(4, value))
-        elif track_name == "price_distance":
-            self.state.tracks.price_distance.position = max(6, min(10, value))
-        elif track_name == "waitresses":
-            self.state.tracks.waitresses.position = max(0, min(4, value))
-        elif track_name == "competition":
-            self.state.tracks.competition = CompetitionLevel(max(0, min(4, value)))
+    def quick_shuffle_deck(self, deck_name: str) -> dict:
+        """Quick mode: shuffle a named deck.
+        For the action deck, the discard pile is merged back in before shuffling."""
+        deck = self._resolve_deck(deck_name)
+        if deck is None:
+            return {"status": "error", "message": f"Unknown deck: {deck_name}"}
+        if deck_name == "action":
+            self.state.reshuffle_deck()
+            self.state.log(
+                "Shuffled Action Deck (discard pile merged back in).", "system"
+            )
         else:
-            return {"status": "error", "message": f"Unknown track: {track_name}"}
+            deck.shuffle()
+            self.state.log(f"Shuffled {deck.name}.", "system")
+        return {"status": "ok", "deck": deck.to_dict()}
 
-        return {"status": "ok", "tracks": self.state.tracks.to_dict()}
+    def quick_discard(self, deck_name: str) -> dict:
+        """Quick mode: draw the top card from a deck and move it to the discard pile."""
+        deck = self._resolve_deck(deck_name)
+        if deck is None:
+            return {"status": "error", "message": f"Unknown deck: {deck_name}"}
+        card = deck.draw()
+        if not card:
+            return {"status": "error", "message": f"{deck.name} is empty!"}
+        self.state.discard_pile.place_under(card)
+        card_label = f"{card.card_type.value} #{card.card_number}"
+        self.state.log(f"Discarded {card_label} from {deck.name}.", "system")
+        return {
+            "status": "ok",
+            "card": card.to_dict(),
+            "deck": deck.to_dict(),
+            "discard_pile": self.state.discard_pile.to_dict(),
+        }
+
+    def quick_draw_competition(self, deck_name: str) -> dict:
+        """Quick mode: draw the top card from warm/cool deck and hold it for resolve decision."""
+        deck = self._resolve_deck(deck_name)
+        if deck is None:
+            return {"status": "error", "message": f"Unknown deck: {deck_name}"}
+        card = deck.draw()
+        if not card:
+            return {"status": "error", "message": f"{deck.name} is empty!"}
+        self.state._pending_competition_card = card
+        self.state._pending_competition_deck = deck_name
+        card_label = f"{card.card_type.value} #{card.card_number}"
+        self.state.log(f"Drew {card_label} from {deck.name}.", "system")
+        return {
+            "status": "ok",
+            "card": card.to_dict(),
+            "deck": deck.to_dict(),
+        }
+
+    def quick_resolve_competition(self, deck_name: str, resolved: bool) -> dict:
+        """Quick mode: resolve or not-resolve a drawn competition card.
+        Resolved: card goes back to bottom of its warm/cool deck.
+        Not resolved: card goes to bottom of action deck."""
+        card = getattr(self.state, "_pending_competition_card", None)
+        if card is None:
+            return {"status": "error", "message": "No competition card pending."}
+        deck = self._resolve_deck(deck_name)
+        if deck is None:
+            return {"status": "error", "message": f"Unknown deck: {deck_name}"}
+        card_label = f"{card.card_type.value} #{card.card_number}"
+        if resolved:
+            deck.place_under(card)
+            self.state.log(
+                f"{card_label} resolved \u2014 returned to bottom of {deck.name}.",
+                "system",
+            )
+        else:
+            self.state.action_deck.place_under(card)
+            self.state.log(
+                f"{card_label} not resolved \u2014 placed on bottom of Action Deck.",
+                "system",
+            )
+        self.state._pending_competition_card = None
+        self.state._pending_competition_deck = None
+        return {
+            "status": "ok",
+            "source_deck": deck.to_dict(),
+            "action_deck": self.state.action_deck.to_dict(),
+        }
+
+    def quick_place_on_action(self, deck_name: str, position: str) -> dict:
+        """Quick mode: draw top card from warm/cool deck and place on action deck."""
+        deck = self._resolve_deck(deck_name)
+        if deck is None:
+            return {"status": "error", "message": f"Unknown deck: {deck_name}"}
+        card = deck.draw()
+        if not card:
+            return {"status": "error", "message": f"{deck.name} is empty!"}
+        if position == "top":
+            self.state.action_deck.place_on_top(card)
+        else:
+            self.state.action_deck.place_under(card)
+        label = "top" if position == "top" else "bottom"
+        card_label = f"{card.card_type.value} #{card.card_number}"
+        self.state.log(
+            f"Placed {card_label} from {deck.name} on {label} of Action Deck.", "system"
+        )
+        return {
+            "status": "ok",
+            "card": card.to_dict(),
+            "source_deck": deck.to_dict(),
+            "action_deck": self.state.action_deck.to_dict(),
+        }
+
+    def _resolve_deck(self, deck_name: str):
+        """Return the Deck object for a given name, or None."""
+        mapping = {
+            "warm": self.state.warm_deck,
+            "cool": self.state.cool_deck,
+            "action": self.state.action_deck,
+            "discard": self.state.discard_pile,
+        }
+        return mapping.get(deck_name)

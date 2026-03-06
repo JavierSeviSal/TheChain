@@ -1279,9 +1279,7 @@ class GameState:
             "current_back_card": self.current_back_card,
             "current_competition_card": self.current_competition_card,
             "bank_breaks": self.bank_breaks,
-            "bank_reserve_card": (
-                self.bank_reserve_card if self.bank_breaks > 0 else None
-            ),
+            "bank_reserve_card": self.bank_reserve_card,
             "action_log": self.action_log[-50:],  # Last 50 entries
             "pending_input": self.pending_input,
             "is_first_turn": self.is_first_turn,

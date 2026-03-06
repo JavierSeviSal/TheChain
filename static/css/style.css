@@ -335,6 +335,25 @@ body {
 .primary-btn:active { transform: translateY(0); }
 .primary-btn.large { padding: 16px 32px; font-size: 1.15rem; }
 
+.small-btn {
+    background: var(--bg-panel);
+    color: var(--text);
+    border: 1px solid var(--text-muted);
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+}
+
+.small-btn:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
 .primary-btn.pulse {
     animation: pulse 2s infinite;
 }
@@ -1085,6 +1104,37 @@ body {
     accent-color: var(--accent);
 }
 
+/* ─── Prompt Inventory Display ──────────────────────────────── */
+
+.prompt-inventory {
+    background: var(--bg-card);
+    border: 1px solid var(--text-muted);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 20px;
+}
+
+.prompt-inventory-heading {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--accent2);
+    margin-bottom: 8px;
+}
+
+.prompt-inventory-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.prompt-inventory-item {
+    background: var(--bg);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    white-space: nowrap;
+}
+
 /* ─── Save List ──────────────────────────────────────────────── */
 
 .saves-list {
@@ -1188,33 +1238,81 @@ body {
 
 .quick-panel {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.quick-panel h3 { width: 100%; }
+.quick-panel h3 { width: 100%; margin: 0; }
 
-.quick-tracks {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    flex: 1;
+.quick-deck-info {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    line-height: 1.5;
 }
 
-.quick-tracks label {
-    font-size: 0.8rem;
+.quick-deck-section {
+    width: 100%;
+    border: 1px solid var(--text-muted);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+}
+
+.quick-deck-section h4 {
+    margin: 0 0 6px;
+    font-size: 0.85rem;
     color: var(--text-muted);
 }
 
-.track-input {
-    width: 60px;
-    padding: 6px;
-    border: 1px solid var(--text-muted);
+.quick-deck-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.quick-deck-buttons .muted-btn,
+.quick-deck-buttons .primary-btn {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+}
+
+.quick-drawn-card {
+    margin-top: 8px;
+    padding: 8px;
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    border: 1px solid var(--accent2);
+}
+
+.drawn-card-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.drawn-card-img {
+    width: 80px;
     border-radius: 4px;
-    background: var(--bg);
-    color: var(--text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.drawn-card-label {
+    font-weight: 600;
     font-size: 0.9rem;
+}
+
+.drawn-card-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.drawn-card-actions .primary-btn,
+.drawn-card-actions .muted-btn {
+    font-size: 0.8rem;
+    padding: 6px 12px;
 }
 
 /* ─── Responsive: Tablet+ ────────────────────────────────────── */

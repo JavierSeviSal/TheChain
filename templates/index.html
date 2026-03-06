@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>The Chain — FCM Solo Automa</title>
-    <link rel="stylesheet" href="/static/css/style.css?v=31">
+    <link rel="stylesheet" href="/static/css/style.css?v=35">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
 </head>
 <body>
@@ -267,6 +267,9 @@
                 <div class="info-section">
                     <h4>🏆 <span data-i18n="milestones">Milestones</span></h4>
                     <div id="milestone-list" class="tag-list"></div>
+                    <button id="btn-view-reserve" class="small-btn hidden" style="margin-top: 8px;">
+                        🔍 <span data-i18n="view_reserve">View Reserve Card</span>
+                    </button>
                 </div>
                 <div class="info-section">
                     <h4>🍽️ <span data-i18n="restaurants">Restaurants</span></h4>
@@ -294,25 +297,50 @@
             <!-- Quick Mode Controls (hidden in full mode) -->
             <div id="quick-controls" class="panel quick-panel hidden">
                 <h3 data-i18n="quick_controls">Quick Controls</h3>
+
+                <div id="quick-deck-info" class="deck-info quick-deck-info"></div>
+
                 <button id="btn-quick-draw" class="primary-btn" data-i18n="draw_card">Draw Card</button>
-                <div class="quick-tracks">
-                    <label>R&T: <input type="number" id="qtrack-rt" min="1" max="4" value="1" class="track-input"></label>
-                    <label>P+D: <input type="number" id="qtrack-pd" min="6" max="10" value="10" class="track-input"></label>
-                    <label>Wait: <input type="number" id="qtrack-wait" min="0" max="4" value="0" class="track-input"></label>
-                    <label>Comp: <select id="qtrack-comp" class="track-input">
-                        <option value="0">Cold</option>
-                        <option value="1">Cool</option>
-                        <option value="2" selected>Neutral</option>
-                        <option value="3">Warm</option>
-                        <option value="4">Hot</option>
-                    </select></label>
+
+                <div class="quick-deck-section">
+                    <h4>🔴 <span data-i18n="warm_deck">Warm Deck</span></h4>
+                    <div class="quick-deck-buttons">
+                        <button class="primary-btn" onclick="quickDrawCompetition('warm')" data-i18n="draw_comp">Draw</button>
+                        <button class="muted-btn" onclick="quickShuffleDeck('warm')" data-i18n="shuffle">Shuffle</button>
+                        <button class="muted-btn" onclick="quickDiscardFrom('warm')" data-i18n="discard">Discard</button>
+                    </div>
+                    <div id="warm-drawn-card" class="quick-drawn-card hidden"></div>
                 </div>
-                <button id="btn-quick-update" class="muted-btn" data-i18n="update_tracks">Update Tracks</button>
+
+                <div class="quick-deck-section">
+                    <h4>🟢 <span data-i18n="cool_deck">Cool Deck</span></h4>
+                    <div class="quick-deck-buttons">
+                        <button class="primary-btn" onclick="quickDrawCompetition('cool')" data-i18n="draw_comp">Draw</button>
+                        <button class="muted-btn" onclick="quickShuffleDeck('cool')" data-i18n="shuffle">Shuffle</button>
+                        <button class="muted-btn" onclick="quickDiscardFrom('cool')" data-i18n="discard">Discard</button>
+                    </div>
+                    <div id="cool-drawn-card" class="quick-drawn-card hidden"></div>
+                </div>
+
+                <div class="quick-deck-section">
+                    <h4>📇 <span data-i18n="action_deck_label">Action Deck</span></h4>
+                    <div class="quick-deck-buttons">
+                        <button class="muted-btn" onclick="quickShuffleDeck('action')" data-i18n="shuffle">Shuffle</button>
+                        <button class="muted-btn" onclick="quickDiscardFrom('action')" data-i18n="discard">Discard</button>
+                    </div>
+                </div>
+
+                <div class="quick-deck-section">
+                    <h4>♻️ <span data-i18n="discard_pile_label">Discard Pile</span></h4>
+                    <div class="quick-deck-buttons">
+                        <button class="muted-btn" onclick="quickShuffleDeck('discard')" data-i18n="shuffle">Shuffle</button>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
 
-    <script src="/static/js/i18n.js?v=31"></script>
-    <script src="/static/js/app.js?v=31"></script>
+    <script src="/static/js/i18n.js?v=35"></script>
+    <script src="/static/js/app.js?v=35"></script>
 </body>
 </html>

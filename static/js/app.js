@@ -270,6 +270,7 @@ function bindEvents() {
     $("#btn-new-game").onclick = () => { hideOverlay(menuOverlay); showOverlay(newgameOverlay); };
     $("#btn-save-load").onclick = () => { hideOverlay(menuOverlay); showLoadOverlay(); };
     $("#btn-bank-break").onclick = doBankBreak;
+    $("#btn-view-reserve").onclick = viewReserveCard;
     $("#btn-close-menu").onclick = () => hideOverlay(menuOverlay);
 
     // New game
@@ -332,7 +333,6 @@ function bindEvents() {
 
     // Quick mode
     $("#btn-quick-draw").onclick = quickDraw;
-    $("#btn-quick-update").onclick = quickUpdateTracks;
 }
 
 // ─── Overlays ──────────────────────────────────────────────────────────
@@ -550,6 +550,30 @@ function showInputPrompt(input) {
     container.innerHTML = "";
     inputOverlay.dataset.inputType = input.type;
 
+    // ── Display inventory if provided (e.g., during dinnertime prompt) ───────
+    if (input.inventory_display && input.inventory_display.length > 0) {
+        const inventorySection = document.createElement("div");
+        inventorySection.className = "prompt-inventory";
+        
+        const heading = document.createElement("div");
+        heading.className = "prompt-inventory-heading";
+        heading.textContent = currentLang === "es" ? "Inventario actual:" : "Current Inventory:";
+        inventorySection.appendChild(heading);
+        
+        const itemsContainer = document.createElement("div");
+        itemsContainer.className = "prompt-inventory-items";
+        
+        input.inventory_display.forEach(item => {
+            const itemEl = document.createElement("div");
+            itemEl.className = "prompt-inventory-item";
+            itemEl.textContent = `${item.icon} ${item.item}: ${item.count}`;
+            itemsContainer.appendChild(itemEl);
+        });
+        
+        inventorySection.appendChild(itemsContainer);
+        container.appendChild(inventorySection);
+    }
+
     // ── Milestone roundup — custom two-section UI ─────────────────────
     if (input.type === "milestone_player_roundup") {
         const chainClaimed = [...(input.chain_claimed || [])].sort((a, b) => {
@@ -747,66 +771,72 @@ function refreshUI() {
     // Mode button
     btnMode.textContent = gameState.mode === "full" ? t("full_mode") : t("quick_mode");
 
-    // Quick controls visibility
+    // Quick mode: show only cards + deck controls; hide everything else
     const quickPanel = $("#quick-controls");
-    if (gameState.mode === "quick") {
-        quickPanel.classList.remove("hidden");
-    } else {
-        quickPanel.classList.add("hidden");
-    }
+    const tracksPanel = document.querySelector(".tracks-panel");
+    const inventoryPanel = document.querySelector(".inventory-panel");
+    const infoPanel = document.querySelector(".info-panel");
+    const logPanel = document.querySelector(".log-panel");
+    const actionRow = document.querySelector(".action-row");
+    const statusMsg = $("#status-msg");
+    const isQuick = gameState.mode === "quick";
+    quickPanel.classList.toggle("hidden", !isQuick);
+    if (tracksPanel) tracksPanel.classList.toggle("hidden", isQuick);
+    if (inventoryPanel) inventoryPanel.classList.toggle("hidden", isQuick);
+    if (infoPanel) infoPanel.classList.toggle("hidden", isQuick);
+    if (logPanel) logPanel.classList.toggle("hidden", isQuick);
+    if (actionRow) actionRow.classList.toggle("hidden", isQuick);
+    turnBadge.classList.toggle("hidden", isQuick);
+    phaseBadge.classList.toggle("hidden", isQuick);
+    if (isQuick) { hideOverlay(inputOverlay); }
 
     // Cards
     updateCardImage("back", gameState.current_back_card);
     updateCardImage("front", gameState.current_front_card);
     updateCompetitionCard();
 
-    // Tracks
-    updateTracks();
-
-    // Inventory
-    updateInventory();
-
-    // Info panel
-    updateMarketeers();
-    updateEmployees();
-    updateMilestones();
-    updateRestaurants();
-    updateChainCash();
+    // Deck info (always update so quick mode shows deck sizes)
     updateDeckInfo();
 
-    // Log
-    updateLog();
+    // Full-mode only panels & phase logic
+    if (!isQuick) {
+        updateTracks();
+        updateInventory();
+        updateMarketeers();
+        updateEmployees();
+        updateMilestones();
+        updateRestaurants();
+        updateChainCash();
+        updateLog();
 
-    // Advance button — context-aware label
-    let labelPhase;
-    if (gameState.phase === "waiting_for_input" && gameState.next_phase_after_input) {
-        labelPhase = gameState.next_phase_after_input;
-    } else if (gameState.phase === "waiting_for_input" && gameState.phase_after_competition) {
-        // Paused after a competition card resolution — show "Continue ▶"
-        labelPhase = "continue_competition";
-    } else {
-        labelPhase = gameState.phase;
-    }
-    btnAdvance.textContent = getAdvanceLabel(labelPhase);
-    if (gameState.phase === "game_over") {
-        btnAdvance.disabled = false;
-        btnAdvance.classList.add("pulse");
-    } else if (gameState.phase === "waiting_for_input") {
-        if (gameState.pending_input) {
-            // Active prompt — disable Advance, show the input overlay
-            btnAdvance.disabled = true;
-            btnAdvance.classList.remove("pulse");
-            showInputPrompt(gameState.pending_input);
+        // Advance button — context-aware label
+        let labelPhase;
+        if (gameState.phase === "waiting_for_input" && gameState.next_phase_after_input) {
+            labelPhase = gameState.next_phase_after_input;
+        } else if (gameState.phase === "waiting_for_input" && gameState.phase_after_competition) {
+            labelPhase = "continue_competition";
         } else {
-            // Input resolved but phase transition delayed — let user Advance
+            labelPhase = gameState.phase;
+        }
+        btnAdvance.textContent = getAdvanceLabel(labelPhase);
+        if (gameState.phase === "game_over") {
+            btnAdvance.disabled = false;
+            btnAdvance.classList.add("pulse");
+        } else if (gameState.phase === "waiting_for_input") {
+            if (gameState.pending_input) {
+                btnAdvance.disabled = true;
+                btnAdvance.classList.remove("pulse");
+                showInputPrompt(gameState.pending_input);
+            } else {
+                hideOverlay(inputOverlay);
+                btnAdvance.disabled = false;
+                btnAdvance.classList.add("pulse");
+            }
+        } else {
             hideOverlay(inputOverlay);
             btnAdvance.disabled = false;
             btnAdvance.classList.add("pulse");
         }
-    } else {
-        hideOverlay(inputOverlay);
-        btnAdvance.disabled = false;
-        btnAdvance.classList.add("pulse");
     }
 }
 
@@ -1081,6 +1111,14 @@ function updateMilestones() {
     if (container.children.length === 0) {
         container.innerHTML = `<span class="text-muted">—</span>`;
     }
+
+    // Show "View Reserve Card" button if player has first_to_have_20 milestone
+    const viewReserveBtn = $("#btn-view-reserve");
+    if (unavailable.has("first_to_have_20") && gameState.bank_reserve_card) {
+        viewReserveBtn.classList.remove("hidden");
+    } else {
+        viewReserveBtn.classList.add("hidden");
+    }
 }
 
 function updateRestaurants() {
@@ -1114,7 +1152,6 @@ function updateChainCash() {
 }
 
 function updateDeckInfo() {
-    const container = $("#deck-info");
     if (!gameState) return;
     const ad = gameState.action_deck || {};
     const dp = gameState.discard_pile || {};
@@ -1127,12 +1164,16 @@ function updateDeckInfo() {
     const discardSize = dp.size || 0;
     const posLabel = deckSize > 0 ? `${drawn} / ${deckSize + discardSize}` : "\u2014";
     const cycleLabel = cycles > 0 ? ` \u00b7 ${t("cycle")} #${cycles}` : "";
-    container.innerHTML = `
+    const html = `
         \ud83d\udcc7 Action: ${deckSize} ${t("cards_remaining")}${discardSize > 0 ? ` \u00b7 \u267b\ufe0f ${discardSize} discarded` : ""} (${posLabel}${cycleLabel})<br>
         🔴 Warm: ${wd.size || 0}<br>
         🟢 Cool: ${cd.size || 0}<br>
         <small>${t("total_drawn")}: ${total}</small>
     `;
+    const container = $("#deck-info");
+    if (container) container.innerHTML = html;
+    const quickContainer = document.getElementById("quick-deck-info");
+    if (quickContainer) quickContainer.innerHTML = html;
 }
 
 function updateLog() {
@@ -1335,27 +1376,57 @@ async function doBankBreak() {
     const result = await API.post("/api/game/input", { type: "bank_break" });
     await refreshState();
     if (result.reveal_reserve_card) {
-        if (result.reserve_prices_module) {
-            // Reserve Prices module: show alternate Base Price card image (.png)
-            $("#reserve-reveal-img").src = `/static/cards/reserve_price_${result.reveal_reserve_card}.png`;
-            $("#reserve-reveal-header").textContent = "🏦 The Chain's Base Price Reserve";
+        showReserveCardOverlay(result.reveal_reserve_card, result.reserve_prices_module, false);
+    } else {
+        setStatus(result.message);
+    }
+}
+
+async function viewReserveCard() {
+    const result = await API.post("/api/game/view_reserve");
+    if (result.status === "error") {
+        setStatus(result.message);
+        return;
+    }
+    if (result.reserve_card) {
+        showReserveCardOverlay(result.reserve_card, result.reserve_prices_module, true);
+    }
+}
+
+function showReserveCardOverlay(cardValue, isReservePrices, isMilestoneBenefit) {
+    if (isReservePrices) {
+        // Reserve Prices module: show alternate Base Price card image (.png)
+        $("#reserve-reveal-img").src = `/static/cards/reserve_price_${cardValue}.png`;
+        $("#reserve-reveal-header").textContent = "🏦 The Chain's Base Price Reserve";
+        if (isMilestoneBenefit) {
+            $("#reserve-reveal-sub").textContent =
+                "🏆 Milestone Benefit: You can view the Chain's base price card.";
+            $("#reserve-reveal-extra").textContent =
+                "The base price card is $" + cardValue + ". This does NOT trigger a bank break.";
+        } else {
             $("#reserve-reveal-sub").textContent =
                 "The base price card secretly chosen at the start of this game was…";
             $("#reserve-reveal-extra").textContent =
                 "Add $400 to the bank (2 players × $200). Compare this card with yours to determine the new base unit price.";
+        }
+        $("#reserve-reveal-extra").classList.remove("hidden");
+    } else {
+        // Base game: show standard reserve card image (.jpg)
+        $("#reserve-reveal-img").src = `/static/cards/reserve${cardValue}.jpg`;
+        $("#reserve-reveal-header").textContent = "🏦 The Chain's Bank Reserve";
+        if (isMilestoneBenefit) {
+            $("#reserve-reveal-sub").textContent =
+                "🏆 Milestone Benefit: You can view the Chain's reserve card.";
+            $("#reserve-reveal-extra").textContent =
+                "The reserve card is $" + cardValue + ". This does NOT trigger a bank break.";
             $("#reserve-reveal-extra").classList.remove("hidden");
         } else {
-            // Base game: show standard reserve card image (.jpg)
-            $("#reserve-reveal-img").src = `/static/cards/reserve${result.reveal_reserve_card}.jpg`;
-            $("#reserve-reveal-header").textContent = "🏦 The Chain's Bank Reserve";
             $("#reserve-reveal-sub").textContent =
                 "The bank card secretly chosen at the start of this game was…";
             $("#reserve-reveal-extra").classList.add("hidden");
         }
-        showOverlay($("#reserve-reveal-overlay"));
-    } else {
-        setStatus(result.message);
     }
+    showOverlay($("#reserve-reveal-overlay"));
 }
 
 function closeReserveReveal() {
@@ -1377,25 +1448,68 @@ async function quickDraw() {
     await refreshState();
 }
 
-async function quickUpdateTracks() {
-    await API.post("/api/game/quick/track", {
-        track: "recruit_train",
-        value: parseInt($("#qtrack-rt").value) || 1,
-    });
-    await API.post("/api/game/quick/track", {
-        track: "price_distance",
-        value: parseInt($("#qtrack-pd").value) || 10,
-    });
-    await API.post("/api/game/quick/track", {
-        track: "waitresses",
-        value: parseInt($("#qtrack-wait").value) || 0,
-    });
-    await API.post("/api/game/quick/track", {
-        track: "competition",
-        value: parseInt($("#qtrack-comp").value) || 2,
-    });
+async function quickShuffleDeck(deckName) {
+    const result = await API.post("/api/game/quick/shuffle", { deck: deckName });
+    if (result.status === "error") { setStatus(result.message); return; }
     await refreshState();
-    setStatus(currentLang === "es" ? "Pistas actualizadas." : "Tracks updated.");
+    setStatus(currentLang === "es" ? `Mazo ${deckName} barajado.` : `${deckName} deck shuffled.`);
+}
+
+async function quickDiscardFrom(deckName) {
+    const result = await API.post("/api/game/quick/discard", { deck: deckName });
+    if (result.status === "error") { setStatus(result.message); return; }
+    await refreshState();
+    const cardLabel = result.card ? `${result.card.card_type} #${result.card.card_number}` : "card";
+    setStatus(currentLang === "es" ? `${cardLabel} descartada de ${deckName}.` : `${cardLabel} discarded from ${deckName} deck.`);
+}
+
+// ─── Competition Draw / Resolve ────────────────────────────────────────
+
+async function quickDrawCompetition(deckName) {
+    const result = await API.post("/api/game/quick/draw_competition", { deck: deckName });
+    if (result.status === "error") { setStatus(result.message); return; }
+    await refreshState();
+    const card = result.card;
+    const container = document.getElementById(`${deckName}-drawn-card`);
+    if (container && card) {
+        const label = `${card.card_type} #${card.card_number}`;
+        const imgSrc = card.image_front || "";
+        container.innerHTML = `
+            <div class="drawn-card-preview">
+                ${imgSrc ? `<img src="${imgSrc}" class="drawn-card-img" alt="${label}">` : ""}
+                <span class="drawn-card-label">${label}</span>
+            </div>
+            <div class="drawn-card-actions">
+                <button class="primary-btn" onclick="resolveCompetition('${deckName}', true)">
+                    ${currentLang === "es" ? "✅ Resuelta" : "✅ Resolved"}
+                </button>
+                <button class="muted-btn" onclick="resolveCompetition('${deckName}', false)">
+                    ${currentLang === "es" ? "❌ No resuelta" : "❌ Not Resolved"}
+                </button>
+            </div>
+        `;
+        container.classList.remove("hidden");
+    }
+}
+
+async function resolveCompetition(deckName, wasResolved) {
+    const result = await API.post("/api/game/quick/resolve_competition", {
+        deck: deckName,
+        resolved: wasResolved,
+    });
+    if (result.status === "error") { setStatus(result.message); return; }
+    const container = document.getElementById(`${deckName}-drawn-card`);
+    if (container) { container.classList.add("hidden"); container.innerHTML = ""; }
+    await refreshState();
+    if (wasResolved) {
+        setStatus(currentLang === "es"
+            ? `Carta devuelta al fondo del mazo ${deckName}.`
+            : `Card returned to bottom of ${deckName} deck.`);
+    } else {
+        setStatus(currentLang === "es"
+            ? "Carta colocada al fondo del mazo de acci\u00f3n."
+            : "Card placed on bottom of action deck.");
+    }
 }
 
 // ─── Download / Upload Save ───────────────────────────────────────────

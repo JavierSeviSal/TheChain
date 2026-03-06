@@ -32,7 +32,7 @@ Run the automa entirely from your phone or laptop — no physical cards needed.
 
 ```
 TheChain/
-├── app.py                   # Flask server & REST API (port 8000)
+├── app.py                   # Flask server & REST API (port 5000)
 ├── requirements.txt         # Python dependencies
 │
 ├── game/                    # Core game logic (pure Python)
@@ -87,7 +87,7 @@ Output: `static/cards/` (88 PNGs) and `static/boards/` (3 PNGs).
 python app.py
 ```
 
-Open **http://localhost:8000** in your browser (or use your LAN IP to play from a phone on the same network).
+Open **http://localhost:5000** in your browser (or use your LAN IP to play from a phone on the same network).
 
 ---
 
